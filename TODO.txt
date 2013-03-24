@@ -1,0 +1,14 @@
+BUGS TO CORRECT
+===============
+
+* Line formatting sometimes broken when there is a break on an hyphen in all modes except the fully justified one ;
+* Break on - will generate two hyphens (end of line and start of next line) ;
+* Wrong metric for ( and ) ;
+
+FEATURES TO ADD
+===============
+* Constraint programming ;
+* Combinator interface to specify the layout of complex documents ;
+* Support for other fonts an encoding ;
+* Support for PNG ;
+* Support for inclusion of other PDF files ;

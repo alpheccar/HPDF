@@ -1,0 +1,14 @@
+WHAT'S NEW IN HPDF 1.4
+======================
+Lot's of contributions from Leon Smith ! Thank you. Here is a summary:
+
+A - Changes by Leon
+===================
+1 - Huge speed improvement of the draw monad ;
+2 - New implementation of shapes (Rectangle, curveto, arcto, point datatype) ;
+3 - Cleaning of the API (coordinates, shapes) ;
+
+B - Changes by alpheccar
+=========================
+1 - Lots of bug corrections for typesetting ;
+2 - An API to draw text boxes 
