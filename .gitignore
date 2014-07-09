@@ -6,3 +6,5 @@ test/test
 test/afm
 test/*.o
 
+.cabal-sandbox
+cabal.sandbox.config
