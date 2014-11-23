@@ -18,18 +18,22 @@
 -- #hide
 module Graphics.PDF.LowLevel.Types where
 
-import qualified Data.Map as M
-import Data.List(intersperse)
-import Data.Int
+import Codec.Text.IConv ( convertFuzzy, Fuzzy(..) )
 import Control.Monad.State
 import Control.Monad.Writer
-import Data.Word
 import Data.Binary.Builder(Builder,fromByteString)
-import Graphics.PDF.LowLevel.Serializer
+import Data.ByteString.Lazy.UTF8 (fromString)
 import Data.Complex
+import Data.Int
+import Data.List(intersperse)
+import Data.Word
+import Graphics.PDF.LowLevel.Serializer
 import qualified Data.ByteString as S
+import qualified Data.Map as M
+
 #if __GLASGOW_HASKELL__ >= 608
 import qualified Data.ByteString.Lazy.Internal as L(ByteString(..))
+import qualified Data.ByteString.Lazy as L
 #else
 import qualified Data.ByteString.Base as L(LazyByteString(..))
 #endif
@@ -38,7 +42,7 @@ import qualified Data.ByteString.Base as L(LazyByteString(..))
 class PdfObject a where
   toPDF :: a -> Builder
 
-class PdfLengthInfo a where 
+class PdfLengthInfo a where
   pdfLengthInfo :: a -> Maybe (Int64 , PDFReference MaybeLength)
   pdfLengthInfo _ = Nothing
 
@@ -48,26 +52,26 @@ data AnyPdfObject = forall a . (PdfObject a, PdfLengthInfo a) => AnyPdfObject !a
 instance PdfObject AnyPdfObject where
  toPDF (AnyPdfObject a) = toPDF a
 
-instance PdfLengthInfo AnyPdfObject where 
+instance PdfLengthInfo AnyPdfObject where
   pdfLengthInfo (AnyPdfObject a) = pdfLengthInfo a
- 
+
 -- | An integer in a PDF document
 newtype PDFInteger = PDFInteger Int deriving(Eq,Show,Ord,Num)
 
 -- | A length in a PDF document
 newtype PDFLength = PDFLength Int64 deriving(Eq,Show,Ord,Num)
 
-data MaybeLength = UnknownLength 
-                 | KnownLength !PDFLength 
+data MaybeLength = UnknownLength
+                 | KnownLength !PDFLength
 
-instance PdfObject MaybeLength where 
-  toPDF (KnownLength a) = toPDF a 
+instance PdfObject MaybeLength where
+  toPDF (KnownLength a) = toPDF a
   toPDF (UnknownLength) = error "Trying to process an unknown length during PDF generation"
 
 instance PdfLengthInfo MaybeLength where
 
 -- | A real number in a PDF document
-type PDFFloat = Double 
+type PDFFloat = Double
 
 instance PdfObject PDFInteger where
     toPDF (PDFInteger a) = serialize a
@@ -79,13 +83,13 @@ instance PdfObject Int where
 
 instance PdfLengthInfo Int where
 
-          
+
 instance PdfObject PDFLength where
     toPDF (PDFLength a) = serialize (show a)
 
 instance PdfLengthInfo PDFLength where
 
-    
+
 instance PdfObject PDFFloat where
   toPDF a = serialize a
 
@@ -96,11 +100,11 @@ instance PdfObject (Complex PDFFloat) where
   toPDF (x :+ y) = mconcat [ serialize x
                            , serialize ' '
                            , serialize y
-                           ] 
+                           ]
 
 instance PdfLengthInfo (Complex PDFFloat) where
 
-  
+
 instance PdfObject Bool where
   toPDF (True) = serialize "true"
   toPDF (False) = serialize "false"
@@ -113,19 +117,14 @@ newtype PDFString = PDFString S.ByteString deriving(Eq,Ord,Show)
 
 -- | Create a PDF string from an Haskell one
 toPDFString :: String -> PDFString
-toPDFString = PDFString . S.pack . map encodeISO88591 -- . escapeString
-
-encodeISO88591 :: Char -> Word8
-encodeISO88591 a = 
-    let c = fromEnum a in
-    if c < 32 || c >= 256 then 32 else fromIntegral c 
+toPDFString = PDFString . L.toStrict . (convertFuzzy Transliterate "UTF-8" "LATIN1") . fromString
 
 #if __GLASGOW_HASKELL__ >= 608
 instance SerializeValue L.ByteString PDFString where
   serialize (PDFString t) = L.Chunk t L.Empty
 #else
 instance SerializeValue L.LazyByteString PDFString where
-  serialize (PDFString t) = L.LPS [t] 
+  serialize (PDFString t) = L.LPS [t]
 #endif
 
 instance SerializeValue Builder PDFString where
@@ -173,7 +172,7 @@ newline = serialize  '\n'
 
 noPdfObject :: Monoid s => s
 noPdfObject = mempty
-    
+
 instance PdfObject PDFString where
   toPDF a = mconcat [ lparen
                     , serialize . escapeString $ a
@@ -191,13 +190,13 @@ instance PdfObject PDFName where
 
 instance PdfLengthInfo PDFName where
 
- 
+
 -- | A PDFArray
 type PDFArray = [AnyPdfObject]
 
 instance PdfObject a => PdfObject [a] where
     toPDF l = mconcat $ (lbracket:intersperse bspace (map toPDF l)) ++ [bspace] ++ [rbracket]
-       
+
 instance PdfObject a => PdfLengthInfo [a] where
 
 -- | A PDFDictionary
@@ -207,7 +206,7 @@ newtype PDFDictionary = PDFDictionary (M.Map PDFName AnyPdfObject)
 instance PdfObject PDFDictionary where
   toPDF (PDFDictionary a) = mconcat $ [blt,blt,newline]
                                        ++ [convertLevel a]
-                                       ++ [bgt,bgt] 
+                                       ++ [bgt,bgt]
    where
      convertLevel _ = let convertItem key value current = mconcat $ [ toPDF key
                                                                     , bspace
@@ -215,16 +214,16 @@ instance PdfObject PDFDictionary where
                                                                     , newline
                                                                     , current
                                                                     ]
-                                                                       
-          in 
+
+          in
            M.foldWithKey convertItem mempty a
-  
+
 instance PdfLengthInfo PDFDictionary where
 
 -- | Am empty dictionary
 emptyDictionary :: PDFDictionary
 emptyDictionary = PDFDictionary M.empty
-           
+
 isEmptyDictionary :: PDFDictionary -> Bool
 isEmptyDictionary (PDFDictionary d) = M.null d
 
@@ -234,16 +233,16 @@ insertInPdfDict key obj (PDFDictionary d) = PDFDictionary $ M.insert key obj d
 pdfDictUnion :: PDFDictionary -> PDFDictionary -> PDFDictionary
 pdfDictUnion (PDFDictionary a) (PDFDictionary b) = PDFDictionary $ M.union a b
 
-  
+
 -- | A PDF rectangle
 data PDFRect = PDFRect !Int !Int !Int !Int
-  
+
 instance PdfObject PDFRect where
  toPDF (PDFRect a b c d) = toPDF . map (AnyPdfObject . PDFInteger) $ [a,b,c,d]
- 
+
 instance PdfLengthInfo PDFRect where
 
-      
+
 -- | A Referenced objects
 data PDFReferencedObject a = PDFReferencedObject !Int !a
 
@@ -260,7 +259,7 @@ instance PdfObject a => PdfObject (PDFReferencedObject a) where
 
 instance PdfObject a => PdfLengthInfo (PDFReferencedObject a) where
 
-               
+
 -- | A reference to a PDF object
 data PDFReference s = PDFReference !Int deriving(Eq,Ord,Show)
 
@@ -279,10 +278,10 @@ instance PdfObject s => Num (PDFReference s) where
 instance PdfObject s => PdfObject (PDFReference s) where
   toPDF (PDFReference i) = mconcat $ [ serialize . show $ i
                                      , serialize " 0 R"]
-                                      
-                                   
+
+
 instance PdfObject s => PdfLengthInfo (PDFReference s) where
-               
+
 instance (PdfObject a,PdfObject b) => PdfObject (Either a b) where
   toPDF (Left a) = toPDF a
   toPDF (Right a) = toPDF a
@@ -293,6 +292,6 @@ modifyStrict :: (MonadState s m) => (s -> s) -> m ()
 modifyStrict f = do
   	s <- get
   	put $! (f s)
-  	
+
 -- | A monad where paths can be created
 class MonadWriter Builder m => MonadPath m
