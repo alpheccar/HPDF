@@ -8,3 +8,4 @@ test/*.o
 
 .cabal-sandbox
 cabal.sandbox.config
+TAGS
