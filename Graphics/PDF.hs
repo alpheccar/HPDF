@@ -15,6 +15,8 @@
 -- module to see how to use it. Or, download the package and look at the test.hs file 
 -- in the Test folder. That file is giving an example of each feature.
 ---------------------------------------------------------
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE CPP #-}
 module Graphics.PDF
   (
   -- * HPDF
@@ -56,6 +58,10 @@ module Graphics.PDF
   , module Graphics.PDF.Typesetting
   , module Graphics.PDF.Hyphenate
   ) where
+
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid
+#endif
  
 import Graphics.PDF.Hyphenate
 import Graphics.PDF.Typesetting
@@ -83,7 +89,6 @@ import Graphics.PDF.Image
 import Graphics.PDF.Resources(emptyResource)
 import Data.Binary.Builder(Builder,fromLazyByteString, toLazyByteString)
 import Graphics.PDF.LowLevel.Serializer
-import Data.Monoid
 import Data.List(unfoldr)
 
 -- | Create a new PDF document and return a first page
@@ -203,7 +208,8 @@ writeObjectsAndCreateToc l =
    (length l,last lengths,entries)
 -- foldr writeObject (0,0::Int64,[]) l where
 -- writeObject obj (nb,len,toc) = (nb+1,len + (B.length . toLazyByteString $ obj),(serialize $ (printf "%010d 00000 n \n" ((fromIntegral len)::Integer))) : toc)
- 
+generateStreams :: PDFReference PDFCatalog -> PDFDocumentInfo -> Int -> Int64 -> [Builder]
+                -> [Builder] -> B.ByteString
 generateStreams root di !nb !totalLen ens [] = 
   let entries = reverse (tail ens)  
   in
@@ -250,7 +256,6 @@ createObjectByteStrings pdfState m =
           objectEncoding (x,a) = toPDF . PDFReferencedObject (fromIntegral $! x) $ a
           (root,s) = flip runState pdfState  . unPDF $ createPDF >> m >> saveObjects
           objs = objects s
-          k = IM.keys objs 
           encodeAnObject (_,[]) = Nothing 
           encodeAnObject (im,k:t) = 
             let Just o = IM.lookup k im
@@ -263,9 +268,9 @@ createObjectByteStrings pdfState m =
               Nothing -> Just (objectEncoding (k,o),(im,t)) 
               Just im' ->  Just (objectEncoding (k,o),(im',t)) 
 
-          encodedObjects = unfoldr encodeAnObject (objs,k)
+          encodedObjects = unfoldr encodeAnObject (objs,IM.keys objs)
           objectContents = header : encodedObjects
-          (nb,len,toc) = writeObjectsAndCreateToc objectContents
+          (_nb, _len, _toc) = writeObjectsAndCreateToc objectContents
       in
       generateStreams root (docInfo pdfState) 0 0 [] objectContents 
 

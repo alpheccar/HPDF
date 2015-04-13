@@ -155,7 +155,7 @@ data TMState ps s = TMState { tmStyle :: !s
                        
 newtype TM ps s a = TM { unTM :: RWS () [VBox ps s] (TMState ps s) a} 
 #ifndef __HADDOCK__
-  deriving(Monad,MonadWriter [VBox ps s], MonadState (TMState ps s), Functor)
+  deriving(Monad,Applicative,MonadWriter [VBox ps s], MonadState (TMState ps s), Functor)
 #else
 instance Monad TM
 instance MonadWriter [VBox ps s] TM
@@ -165,7 +165,7 @@ instance Functor TM
 
 newtype Para s a = Para { unPara :: RWS BRState [Letter s] s a} 
 #ifndef __HADDOCK__
-  deriving(Monad,MonadWriter [Letter s], MonadReader BRState, MonadState s, Functor)
+  deriving(Monad,Applicative,MonadWriter [Letter s], MonadReader BRState, MonadState s, Functor)
 #else
 instance Monad Para
 instance MonadWriter [Letter s] Para

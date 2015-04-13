@@ -42,12 +42,11 @@ import System.IO
 #endif
 import Data.Char(ord)
 import Data.Bits
-import Control.Monad.Error  
+import qualified Control.Monad.Except as EXC
 import Graphics.PDF.Coordinates
-import Data.Binary.Builder(Builder,fromLazyByteString,singleton)
+import Data.Binary.Builder(Builder,fromLazyByteString)
 import Control.Exception as E
 import qualified Data.Vector.Unboxed as U
-import qualified Data.Bits as BI
 import Data.Word
 
 m_sof0 :: Int
@@ -161,9 +160,9 @@ io :: IO a -> FA a
 io = FA . liftIO
 
 -- | File analyzer monad
-newtype FA a = FA {unFA :: ErrorT String IO a} 
+newtype FA a = FA { unFA :: EXC.ExceptT String IO a}
 #ifndef __HADDOCK__
-  deriving(Monad,MonadError String,Functor)
+  deriving(Monad,Applicative,EXC.MonadError String,Functor)
 #else
 instance Monad FA
 instance MonadError String FA
@@ -172,7 +171,7 @@ instance Functor FA
 #endif
     
 runFA :: FA a -> IO (Either String a)
-runFA = runErrorT . unFA
+runFA = EXC.runExceptT . unFA
 
 readWord16 :: Handle -> FA Int
 readWord16 h = io $ do
@@ -210,10 +209,11 @@ readWord8 h = io $ do
 parseJpegContent :: Handle -> FA (Int,Int,Int,Int)
 parseJpegContent h = do
     r <- readWord8 h
-    when (r /=  0x0FF) $ throwError (strMsg "No marker found")
+    when (r /=  0x0FF) $ EXC.throwError "No marker found"
     sof <- readWord8 h
     case sof of
-        a | a `elem` [m_sof5,m_sof6,m_sof7,m_sof9,m_sof10,m_sof11,m_sof13,m_sof14,m_sof15] -> throwError (strMsg "Unuspported compression mode")
+        a | a `elem` [m_sof5,m_sof6,m_sof7,m_sof9,m_sof10,m_sof11,m_sof13,m_sof14,m_sof15] ->
+                EXC.throwError "Unuspported compression mode"
           | a `elem` [m_sof0,m_sof1,m_sof3] -> do
               _ <- readWord16 h
               bits_per_component <- readWord8 h
@@ -235,7 +235,7 @@ analyzeJpeg h = do
     io $ hSeek h AbsoluteSeek 0
     -- Check jpeg
     header <- readWord16 h
-    when (header /= 0x0FFD8) $ throwError (strMsg "Not a JPEG File")
+    when (header /= 0x0FFD8) $ EXC.throwError "Not a JPEG File"
    
     -- Extract resolution from jfif
     --res <- optional $ jfif h
@@ -250,7 +250,7 @@ analyzeJpeg h = do
     --io $ print width
     --io $ print color_space
     --io $ hClose h
-    unless (color_space `elem` [1,3,4]) $ throwError (strMsg "Color space not supported")
+    unless (color_space `elem` [1,3,4]) $ EXC.throwError "Color space not supported"
     return (bits_per_component,(fromIntegral height),(fromIntegral width),color_space)
     
 --test = analyzePng "Test/logo.png"
