@@ -83,7 +83,9 @@ module Graphics.PDF.Draw(
  ) where
  
 import Data.Maybe
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
+#endif
 
 import qualified Data.Map as M
 import qualified Data.IntMap as IM
@@ -167,6 +169,14 @@ class PDFGlobals m where
     
 -- | The drawing monad
 newtype Draw a = Draw {unDraw :: forall s. DrawTuple s -> ST s a }
+
+instance Applicative Draw where
+    pure x = Draw $ \_env -> return x
+    df <*> af = Draw $ \env -> do
+       f <- unDraw df env
+       a <- unDraw af env
+       return $ f a
+
 
 instance Monad Draw where
     m >>= f  = Draw $ \env -> do
@@ -452,7 +462,7 @@ data PDFTransDirection2 = LeftToRight
 -- | The PDF Monad
 newtype PDF a = PDF {unPDF :: State PdfState a}
 #ifndef __HADDOCK__
-  deriving (Functor, Monad, MonadState PdfState)
+  deriving (Functor, Applicative, Monad, MonadState PdfState)
 #else
 instance Functor PDF
 instance Monad PDF

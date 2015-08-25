@@ -9,7 +9,7 @@
 --
 -- Management of the PDF structure
 ---------------------------------------------------------
-
+{-# LANGUAGE CPP #-}
 module Graphics.PDF.Document(
  -- * Document actions
  -- ** Special document objects
@@ -42,13 +42,16 @@ module Graphics.PDF.Document(
  , emptyDrawing
  ) where
 
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid
+#endif
+
 import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.Draw
 import Graphics.PDF.Pages
 import Control.Monad.State
 import qualified Data.IntMap as IM
 import qualified Data.Map as M
-import Data.Monoid
         
 -- | No information for the document  
 standardDocInfo :: PDFDocumentInfo          

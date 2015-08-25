@@ -13,7 +13,7 @@
 --
 -- PDF Text
 ---------------------------------------------------------
-
+{-# LANGUAGE FlexibleContexts #-}
 module Graphics.PDF.Text(
    -- * Text
    -- ** Types
@@ -136,7 +136,7 @@ defaultParameters = TextParameter 0 0 100 0 0 (Set.empty) (PDFFont Times_Roman 1
 -- | The text monad 
 newtype PDFText a = PDFText {unText :: WriterT Builder (State TextParameter) a}          
 #ifndef __HADDOCK__                    
-  deriving(Monad,Functor,MonadWriter Builder,MonadState TextParameter)
+  deriving(Monad,Applicative,Functor,MonadWriter Builder,MonadState TextParameter)
 #else
 instance Monad PDFText
 instance Functor PDFText
@@ -183,7 +183,8 @@ drawText t = do
     tell . serialize $ "\nET"
     return a
  where
-   addFontRsrc f = modifyStrict $ \s -> s { rsrc = addResource (PDFName "Font") (PDFName (show f)) (toRsrc (PDFFont f 0)) (rsrc s)}
+   addFontRsrc f = modifyStrict $ \s ->
+       s { rsrc = addResource (PDFName "Font") (PDFName (show f)) (toRsrc (PDFFont f 0)) (rsrc s)}
    
 -- | Set position for the text beginning
 textStart :: PDFFloat

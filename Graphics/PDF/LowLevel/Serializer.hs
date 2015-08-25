@@ -19,12 +19,16 @@ module Graphics.PDF.LowLevel.Serializer(
   SerializeValue(..)
  ) where
    
+   
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid
+#endif
+
 import Data.Word 
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Binary.Builder as BU
 import qualified Data.ByteString.Lazy.Char8 as C
 import Foreign.Ptr(Ptr)
-import Data.Monoid
 #if __GLASGOW_HASKELL__ >= 608
 import Data.ByteString.Internal
 import qualified Data.ByteString.Lazy.Internal as L(ByteString(..))

@@ -10,11 +10,16 @@
 -- Horizontal mode
 ---------------------------------------------------------
 -- #hide
+{-# LANGUAGE CPP #-}
 module Graphics.PDF.Typesetting.Horizontal (
    HBox(..)
  , mkHboxWithRatio
  , horizontalPostProcess
  ) where
+
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid
+#endif
 
 import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.Typesetting.Breaking
@@ -30,7 +35,6 @@ import Graphics.PDF.Typesetting.Box
 import Control.Monad.Writer(tell)
 import Control.Monad(when)
 import Graphics.PDF.LowLevel.Serializer
-import Data.Monoid
 
 -- | Current word (created from letter) is converted to a PDFString
 saveCurrentword :: String -> PDFString
