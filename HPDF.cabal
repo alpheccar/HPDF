@@ -3,12 +3,12 @@ Version: 1.4.8
 cabal-version: >=1.6
 License: BSD3
 License-file:LICENSE
-Copyright: Copyright (c) 2007-2013, alpheccar.org
+Copyright: Copyright (c) 2007-2015, alpheccar.org
 category: Graphics
 synopsis: Generation of PDF documents
 maintainer: misc@NOSPAMalpheccar.org
 build-type: Simple
-tested-with: GHC==7.6.1
+tested-with: GHC==7.8.4
 homepage: http://www.alpheccar.org
 description: A PDF library with support for several pages, page transitions, outlines, annotations, compression, colors, shapes, patterns, jpegs, fonts, typesetting ... Have a look at the "Graphics.PDF.Documentation" module to see how to use it. Or, download the package and look at the test.hs file in the Test folder. That file is giving an example of each feature.
 extra-source-files:
@@ -23,6 +23,7 @@ extra-source-files:
   README.txt
   NEWS.txt
   TODO.txt
+  changelog.md
 
 source-repository head
   type:     git

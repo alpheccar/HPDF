@@ -109,6 +109,9 @@ import Graphics.PDF.Typesetting.StandardStyle
 import Graphics.PDF.Hyphenate
 import Data.List(unfoldr,intersperse)
 import Data.Char(isSpace,isAlpha)
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative
+#endif
 
 -- | Display a formatted text in a given bounding rectangle with a given default paragraph style, a given default text style. No clipping
 -- is taking place. Drawing stop when the last line is crossing the bounding rectangle in vertical direction

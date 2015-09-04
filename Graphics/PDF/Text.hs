@@ -62,6 +62,9 @@ import Data.ByteString.Internal(w2c,c2w)
 #else
 import Data.ByteString.Base(w2c,c2w)
 #endif
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative
+#endif
 
 foreign import ccall "ctext.h c_getLeading" cgetLeading :: Int -> Int
 foreign import ccall "ctext.h c_getAdvance" cgetAdvance :: Int -> Int -> Int

@@ -43,7 +43,11 @@ import System.IO
 #endif
 import Data.Char(ord)
 import Data.Bits
+#if __GLASGOW_HASKELL__ >= 710
 import qualified Control.Monad.Except as EXC
+#else
+import qualified Control.Monad.Error as EXC
+#endif
 import Graphics.PDF.Coordinates
 import Data.Binary.Builder(Builder,fromLazyByteString,fromByteString)
 import Control.Exception as E
@@ -51,6 +55,9 @@ import qualified Data.Vector.Unboxed as U
 import Data.Word
 import qualified Data.ByteString.Char8 as C8 (ByteString, pack, index, length)
 import Data.ByteString.Base64(decode)
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative
+#endif
 
 m_sof0 :: Int
 m_sof0 = 0xc0 
@@ -163,7 +170,11 @@ io :: IO a -> FA a
 io = FA . liftIO
 
 -- | File analyzer monad
+#if __GLASGOW_HASKELL__ >= 710
 newtype FA a = FA { unFA :: EXC.ExceptT String IO a}
+#else
+newtype FA a = FA { unFA :: EXC.ErrorT String IO a}
+#endif
 #ifndef __HADDOCK__
   deriving(Monad,Applicative,EXC.MonadError String,Functor)
 #else
@@ -174,7 +185,11 @@ instance Functor FA
 #endif
     
 runFA :: FA a -> IO (Either String a)
+#if __GLASGOW_HASKELL__ >= 710
 runFA = EXC.runExceptT . unFA
+#else
+runFA = EXC.runErrorT . unFA
+#endif
 
 readWord16 :: Handle -> FA Int
 readWord16 h = io $ do

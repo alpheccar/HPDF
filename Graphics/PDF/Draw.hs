@@ -104,6 +104,9 @@ import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.LowLevel.Serializer
 import Graphics.PDF.Resources
 import Graphics.PDF.Data.PDFTree(PDFTree)
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative
+#endif
 
 data AnnotationStyle = AnnotationStyle !(Maybe Color)
 
