@@ -302,6 +302,12 @@ The 'JpegFile' value must be created in the 'IO' monad with:
 Right jpg <- 'readJpegFile' \"logo.jpg\"  
 @
 
+Alternatively, jpegs can be compiled into your code. After converting a jpeg to a data URL, a 'JpegFile' can be created with:
+
+@
+let Right jpg = readJpegDataURL "data:image/jpeg;base64,........."
+@
+
 The haskell code is just extracting the size of the image from the file. The image is not decoded.
 
 -}

@@ -1,5 +1,5 @@
 Name: HPDF
-Version: 1.4.7
+Version: 1.4.8
 cabal-version: >=1.6
 License: BSD3
 License-file:LICENSE
@@ -24,6 +24,10 @@ extra-source-files:
   NEWS.txt
   TODO.txt
 
+source-repository head
+  type:     git
+  location: https://github.com/alpheccar/HPDF.git
+  
 library
   build-depends: 
       base >= 4 && < 5, 
@@ -34,7 +38,8 @@ library
       zlib >= 0.5, 
       binary >= 0.4, 
       mtl,
-      vector >=0.10
+      vector >=0.10,
+      base64-bytestring >= 0.1
   
   ghc-options: -Wall -fno-warn-tabs -funbox-strict-fields  -O2
 
