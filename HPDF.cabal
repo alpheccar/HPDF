@@ -1,6 +1,6 @@
 Name: HPDF
 Version: 1.4.8
-cabal-version: >=1.6
+cabal-version: >=1.10
 License: BSD3
 License-file:LICENSE
 Copyright: Copyright (c) 2007-2015, alpheccar.org
@@ -28,6 +28,15 @@ extra-source-files:
 source-repository head
   type:     git
   location: https://github.com/alpheccar/HPDF.git
+
+Test-Suite HPDF-Tests
+  Type:              exitcode-stdio-1.0
+  Main-is:           HPDF-tests.hs
+  hs-source-dirs:    Test
+  Build-depends:     base >= 4, 
+                     HTF >= 0.10,
+                     HPDF
+  Default-language:  Haskell2010
   
 library
   build-depends: 
@@ -40,6 +49,7 @@ library
       binary >= 0.4, 
       mtl,
       vector >=0.10,
+      errors,
       base64-bytestring >= 0.1
   
   ghc-options: -Wall -fno-warn-tabs -funbox-strict-fields  -O2

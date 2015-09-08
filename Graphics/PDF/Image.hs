@@ -58,6 +58,7 @@ import Data.ByteString.Base64(decode)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
 #endif
+import Control.Error.Util (note)
 
 m_sof0 :: Int
 m_sof0 = 0xc0 
@@ -356,8 +357,6 @@ createPDFRawImage width height interpolate stream =  do
                 tell . fromLazyByteString . B.pack . addPixel . U.toList $ stream  
 
 -- Read Jpeg from ByteString
--- These two functions bother me.  They could throw an exception if the incoming data is invalid...
-
 sIndex :: C8.ByteString -> Int -> Maybe Char
 sIndex bs idx = 
   if (idx < 0) || (idx > C8.length bs)
@@ -365,79 +364,70 @@ sIndex bs idx =
   else Just $ bs `C8.index` idx
 
 sReadWord8 :: C8.ByteString -> Int -> Maybe Int
-sReadWord8 bs idx = 
-  case mlo of
-    Nothing -> Nothing
-    Just lo -> Just (fromEnum . ord $ lo)
-  where mlo = bs `sIndex` idx
+sReadWord8 bs idx = (fromEnum . ord) <$> (bs `sIndex` idx)
 
 sReadWord16 :: C8.ByteString -> Int -> Maybe Int
-sReadWord16 bs idx = 
-  case (sequence [mhi,mlo]) of
-    Nothing -> Nothing
-    Just [hi,lo] -> Just $ ((fromEnum hi) `shiftL` 8) .|. (fromEnum . ord $ lo)
-    Just _ -> Nothing
-  where mhi = bs `sIndex` idx
-        mlo = bs `sIndex` (idx + 1)
+sReadWord16 bs idx = do
+  hi <- sReadWord8 bs idx
+  lo <- sReadWord8 bs (idx + 1)
+  return $ (hi `shiftL` 8) .|. lo
 
-parseJpegDetailData :: C8.ByteString -> Int -> Maybe (Int,Int,Int,Int)
-parseJpegDetailData bs offset = 
-  let m_bits_per_component = sReadWord8 bs (offset + 4)
-      m_height = sReadWord16 bs (offset + 5)
-      m_width = sReadWord16 bs (offset + 7)
-      m_color_space = sReadWord8 bs (offset + 9)
-  in case (sequence [m_bits_per_component, m_height, m_width, m_color_space]) of
-    Nothing -> Nothing
-    Just [bits_per_component, height, width, color_space] -> Just (bits_per_component, height, width, color_space)
-    Just _ -> Nothing
+parseJpegDetailData :: C8.ByteString -> Int -> Maybe (Int,PDFFloat,PDFFloat,Int)
+parseJpegDetailData bs offset = do
+  bpc <- sReadWord8  bs (offset + 4)
+  hgt <- sReadWord16 bs (offset + 5)
+  wdt <- sReadWord16 bs (offset + 7)
+  cls <- sReadWord8  bs (offset + 9)
+  return (bpc, fromIntegral hgt, fromIntegral wdt, cls)
 
-parseJpegContentData :: C8.ByteString -> Int -> Either String (Int,Int,Int,Int)
-parseJpegContentData bs offset = 
-  let msof = sReadWord8 bs (offset + 1)
-      ml = sReadWord16 bs (offset + 2)
-  in case (sequence [msof, ml]) of
-    Nothing -> Left "Corrupt JPEG data URL"
-    Just [sof, l] -> case sof of
-                       a | a `elem` [m_sof5,m_sof6,m_sof7,m_sof9,m_sof10,m_sof11,m_sof13,m_sof14,m_sof15] -> Left "Unuspported compression mode"
-                         | a `elem` [m_sof0,m_sof1,m_sof3] -> case (parseJpegDetailData bs offset) of
-                                                                Nothing -> Left "Corrupt JPEG data URL"
-                                                                Just d -> Right d
-                         | a `elem` [m_soi,m_eoi,m_tem,m_rst0,m_rst1,m_rst2,m_rst3,m_rst4,m_rst5,m_rst6,m_rst7] -> parseJpegContentData bs (offset + 2)
-                         | otherwise -> parseJpegContentData bs (offset + l + 2)
-    Just _ -> Left "Corrupt JPEG data URL"
+(?|) :: Maybe b -> a -> Either a b
+(?|) = flip note
+
+parseJpegContentData :: C8.ByteString -> Int -> Either String (Int,PDFFloat,PDFFloat,Int)
+parseJpegContentData bs offset = do
+  r <- sReadWord8 bs offset ?| "Corrupt JPEG data URL - no marker found"
+  if (r /= 0x0FF)
+    then Left "Corrupt JPEG data URL - no marker found"
+    else do
+      sof <- (sReadWord8 bs (offset + 1)) ?| "Corrupt JPEG data URL - no start of file offset found"
+      case sof of
+        a | a `elem` [m_sof5,m_sof6,m_sof7,m_sof9,m_sof10,m_sof11,m_sof13,m_sof14,m_sof15] -> Left "Unsupported compression mode"
+          | a `elem` [m_sof0,m_sof1,m_sof3] -> (parseJpegDetailData bs offset) ?| "Corrupt JPEG data URL - insufficient data in URL"
+          | a `elem` [m_soi,m_eoi,m_tem,m_rst0,m_rst1,m_rst2,m_rst3,m_rst4,m_rst5,m_rst6,m_rst7] -> parseJpegContentData bs (offset + 2)
+          | otherwise -> do 
+              l <- (sReadWord16 bs (offset + 2)) ?| "Corrupt JPEG data URL - insufficient data in URL"
+              parseJpegContentData bs (offset + l + 2)
+
+checkColorSpace :: (Int,PDFFloat,PDFFloat,Int) -> Either String (Int,PDFFloat,PDFFloat,Int)
+checkColorSpace hdrData@(_,_,_,color_space) = 
+  if color_space `elem` [1,3,4] 
+    then Right hdrData
+    else Left ("Color space [" ++ show color_space ++ "] not supported")
 
 analyzeJpegData :: C8.ByteString -> Either String (Int,PDFFloat,PDFFloat,Int)
-analyzeJpegData bs =
-  let mheader = sReadWord16 bs 0
-  in case mheader of
-    Nothing -> Left "Not a JPEG data URL"
-    Just header -> if (header /= 0x0FFD8) 
-                   then Left "Not a JPEG data URL"
-                   else let jpegData = parseJpegContentData bs 0
-                        in case jpegData of
-                          Right (bits_per_component,height,width,color_space) -> if (color_space `elem` [1,3,4])
-                                                                                 then Right (bits_per_component,(fromIntegral height),(fromIntegral width),color_space)
-                                                                                 else Left "Color space not supported"
-                          Left err -> Left err
+analyzeJpegData bs = do
+  header <- sReadWord16 bs 0 ?| "Not a JPEG data URL - no marker found"
+  if header /= 0x0FFD8 
+    then Left "Not a JPEG data URL - invalid JPEG marker" 
+    else do
+      hdrData <- parseJpegContentData bs 0
+      checkColorSpace hdrData
 
 readJpegData :: String -> Either String JpegFile
-readJpegData dataString = 
-  case (decode $ C8.pack dataString) of
-    Left err -> Left err
-    Right bs -> 
-      let jpegData = analyzeJpegData bs
-      in case jpegData of
-           Left err -> Left err
-           Right (bits_per_component,height,width,color_space) -> Right $ JpegFile bits_per_component width height color_space (fromByteString bs) 
+readJpegData dataString = do
+  bs <- decode $ C8.pack dataString
+  (bits_per_component,height,width,color_space) <- analyzeJpegData bs
+  Right $ JpegFile bits_per_component width height color_space (fromByteString bs) 
 
 -- | Reads a data URL string, and returns a JpegFile.
 -- The incoming string must be a correctly formatted data URL for a JPEG.
 -- You can convert jpeg files to data URLs at the following web site:
 -- http://dataurl.net/#dataurlmaker
 readJpegDataURL :: String -> Either String JpegFile
-readJpegDataURL dataurl = if (take 23 dataurl /= "data:image/jpeg;base64,")
-                          then Left "Data URL does not start with a valid JPEG header"
-                          else readJpegData $ drop 23 dataurl   
+readJpegDataURL dataurl = 
+  if (take 23 dataurl /= "data:image/jpeg;base64,")
+    then Left "Data URL does not start with a valid JPEG header"
+    else readJpegData $ drop 23 dataurl   
 
 -- | A Jpeg file   
 data JpegFile = JpegFile !Int !PDFFloat !PDFFloat !Int !Builder
