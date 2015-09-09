@@ -386,48 +386,42 @@ parseJpegDetailData bs offset = do
 parseJpegContentData :: C8.ByteString -> Int -> Either String (Int,PDFFloat,PDFFloat,Int)
 parseJpegContentData bs offset = do
   r <- sReadWord8 bs offset ?| "Corrupt JPEG data URL - no marker found"
-  if (r /= 0x0FF)
-    then Left "Corrupt JPEG data URL - no marker found"
-    else do
-      sof <- (sReadWord8 bs (offset + 1)) ?| "Corrupt JPEG data URL - no start of file offset found"
-      case sof of
-        a | a `elem` [m_sof5,m_sof6,m_sof7,m_sof9,m_sof10,m_sof11,m_sof13,m_sof14,m_sof15] -> Left "Unsupported compression mode"
-          | a `elem` [m_sof0,m_sof1,m_sof3] -> (parseJpegDetailData bs offset) ?| "Corrupt JPEG data URL - insufficient data in URL"
-          | a `elem` [m_soi,m_eoi,m_tem,m_rst0,m_rst1,m_rst2,m_rst3,m_rst4,m_rst5,m_rst6,m_rst7] -> parseJpegContentData bs (offset + 2)
-          | otherwise -> do 
-              l <- (sReadWord16 bs (offset + 2)) ?| "Corrupt JPEG data URL - insufficient data in URL"
-              parseJpegContentData bs (offset + l + 2)
+  guard (r == 0x0FF) ?| "Corrupt JPEG data URL - no marker found"
+  sof <- (sReadWord8 bs (offset + 1)) ?| "Corrupt JPEG data URL - no start of file offset found"
+  case sof of
+    a | a `elem` [m_sof5,m_sof6,m_sof7,m_sof9,m_sof10,m_sof11,m_sof13,m_sof14,m_sof15] -> Left "Unsupported compression mode"
+      | a `elem` [m_sof0,m_sof1,m_sof3] -> (parseJpegDetailData bs offset) ?| "Corrupt JPEG data URL - insufficient data in URL"
+      | a `elem` [m_soi,m_eoi,m_tem,m_rst0,m_rst1,m_rst2,m_rst3,m_rst4,m_rst5,m_rst6,m_rst7] -> parseJpegContentData bs (offset + 2)
+      | otherwise -> do 
+          l <- (sReadWord16 bs (offset + 2)) ?| "Corrupt JPEG data URL - insufficient data in URL"
+          parseJpegContentData bs (offset + l + 2)
 
 checkColorSpace :: (Int,PDFFloat,PDFFloat,Int) -> Either String (Int,PDFFloat,PDFFloat,Int)
-checkColorSpace hdrData@(_,_,_,color_space) = 
-  if color_space `elem` [1,3,4] 
-    then Right hdrData
-    else Left ("Color space [" ++ show color_space ++ "] not supported")
+checkColorSpace hdrData@(_,_,_,color_space) = do
+  guard (color_space `elem` [1,3,4]) ?| ("Color space [" ++ show color_space ++ "] not supported")
+  return hdrData
 
 analyzeJpegData :: C8.ByteString -> Either String (Int,PDFFloat,PDFFloat,Int)
 analyzeJpegData bs = do
   header <- sReadWord16 bs 0 ?| "Not a JPEG data URL - no marker found"
-  if header /= 0x0FFD8 
-    then Left "Not a JPEG data URL - invalid JPEG marker" 
-    else do
-      hdrData <- parseJpegContentData bs 0
-      checkColorSpace hdrData
+  guard (header == 0x0FFD8) ?| "Not a JPEG data URL - invalid JPEG marker" 
+  hdrData <- parseJpegContentData bs 0
+  checkColorSpace hdrData
 
 readJpegData :: String -> Either String JpegFile
 readJpegData dataString = do
   bs <- decode $ C8.pack dataString
   (bits_per_component,height,width,color_space) <- analyzeJpegData bs
-  Right $ JpegFile bits_per_component width height color_space (fromByteString bs) 
+  return $ JpegFile bits_per_component width height color_space (fromByteString bs) 
 
 -- | Reads a data URL string, and returns a JpegFile.
 -- The incoming string must be a correctly formatted data URL for a JPEG.
 -- You can convert jpeg files to data URLs at the following web site:
 -- http://dataurl.net/#dataurlmaker
 readJpegDataURL :: String -> Either String JpegFile
-readJpegDataURL dataurl = 
-  if (take 23 dataurl /= "data:image/jpeg;base64,")
-    then Left "Data URL does not start with a valid JPEG header"
-    else readJpegData $ drop 23 dataurl   
+readJpegDataURL dataurl = do
+  guard (take 23 dataurl == "data:image/jpeg;base64,") ?| "Data URL does not start with a valid JPEG header"
+  readJpegData $ drop 23 dataurl   
 
 -- | A Jpeg file   
 data JpegFile = JpegFile !Int !PDFFloat !PDFFloat !Int !Builder
