@@ -5,4 +5,5 @@ test/*.pdf
 test/test
 test/afm
 test/*.o
+.HTF
 
