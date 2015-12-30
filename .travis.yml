@@ -1,42 +1,25 @@
-# Use new container infrastructure to enable caching
 sudo: false
-
-# Choose a lightweight base image; we provide our own build tools.
 language: c
-
-# GHC depends on GMP. You can add other dependencies here as well.
 addons:
   apt:
     packages:
     - libgmp-dev
-
-# The different configurations we want to test. You could also do things like
-# change flags or use --stack-yaml to point to a different file.
 env:
 - ARGS=""
 - ARGS="--resolver lts-2"
 - ARGS="--resolver lts-3"
 - ARGS="--resolver lts"
 - ARGS="--resolver nightly"
-
 before_install:
-# Download and unpack the stack executable
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
-- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-
-# This line does all of the work: installs GHC if necessary, build the library,
-# executables, and test suites, and runs the test suites. --no-terminal works
-# around some quirks in Travis's terminal implementation.
+- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards
+  --strip-components=1 -C ~/.local/bin '*/stack'
 script: stack $ARGS --no-terminal --install-ghc test --haddock
-
-# Caching so the next build will be fast too.
 cache:
   directories:
   - $HOME/.stack
-
 notifications:
-  slack: 
-    secure: "V0hERTm5tqRB79UDLFSrRBJ5GQ/QNGuh3EkFKdEfOG3u6z+y7gTMFjZpJW9+N5qH6ZNjwptVrwaF0p8GC8vWLBXqOLac3xFm0qRSrtBE7IUUVjSjPjmCbksyUTNcjCeL4L5JJih24H4ky3hBk2i3GP/wZmxEAsda56s4ufMWjuWYTK8QasWUca6DbQZLwBsZnu1EH+7RZEgi0hvJ0QXCW8uBJ3Lcgaoz4/TaOp8pxxuvbrY7ZoxsKgAZe37VIGKoUCwTQhTvU921Wx9IPUMl98mXILKO+KpvRUz2QUAMv58tVlRSkkzIIWScTK2II/JgwTShjfaWedmsH3eDOckn3dTPn9zZqVeDI4Waxh1sVHIntckkgBLBF0LPBrS3K9d8Qw62T4D/BslBOI1t3id7opg5JOjG/yNdztbVrVzOzBhYqGKkpQeV5WJ2HoYcaDFOED9tsapyZx/HQdQiiZx+5RE5Jqx1ePuLuMXBnah9H/IN24e/hesgXXw5PTis31/LjJNPgtuBjLaWTGs5b75Jz/JlKmrwqXELPNReSSnYKe3yLnJoeTrHRYIwMaJ2frkqJGZhuDDwAFkQTCpOePfqPtYa2JhtQeeo/vTS+La7/bA8yNn1F2Bdt7cDOnDNYfHd/4W+VJeWwA7nX1EBgGg3jsIPBOOqiitCP84HDG34kBs="
-
-
+  slack:
+    rooms:
+      secure: T08fQxhbK0dszfIFxjWKpwN24hORLZTEA0Ax+qAUdyIf0zKRNTLpofcZ9E5pIM6FvXTZjAGeKP9Qym55grFtbTiNm7fpr/LCCdACghaRIi+n0dbw32GpTaj3BNZG4mp5DWyFYpp5lpql6TeUHY/a32HlejQMu3YX7q6apRy26iLewgylBNuW9ixnMR5krwTws6CXy7oa50CCVdHpwf/ye5SCoE5AZ74sRVzGGKrW6xeem5L5HO/sZ5YGWpZ0bbOkBUSGERVCHad/1IBqnwI8RKMT1QwprScCpE8fiRfi6eoSQqsaZTRIKbrzB0w4lLMcIzFBid+jCpGn4gqcFva6qWHYT12v436krXcyuOtUOtQIar3WJnaE6Y4aPWr7gSlIyWHMaS0dvVm0psReWZa1CitfZN80ROEDkVPojn3SewEzGmaLostwtrg1oQ5IIT743brSWnuYL6dtx7i3bv1GYIZ+GP2loxIt2SoV8FIqwGxQ58WfoAnE+IZhvaPQFvO/C89y6Zs27/0WBVJOLan2JIE47nPjxHxFIlpSeZWGoBfZGSyg7z06Ee4+VfPDwl2GjrRCtCzJRm06cSzoX1XVCgFHD2y5XywE5Cxb1hFe7m/6oQG5oU/4a/ax0KTFNf7DBzw+04UnDXlVrgZOsdQOVy0q9e5wClcNF2rLX+eomwM=
