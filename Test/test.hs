@@ -144,7 +144,7 @@ rawImage page =  do
                    | i < 2*nb*(3*nb) = 0x0000FF00
                    | otherwise = 0x000000FF
         pixels = U.generate (9*nb*nb) getPixel
-    jpg <- createPDFRawImage (fromIntegral $ 3*nb) (fromIntegral $ 3*nb) True pixels
+    jpg <- createPDFRawImageFromARGB (fromIntegral $ 3*nb) (fromIntegral $ 3*nb) True pixels
     drawWithPage page $ do
       withNewContext $ do
           setFillAlpha 0.4

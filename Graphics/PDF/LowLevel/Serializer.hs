@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org

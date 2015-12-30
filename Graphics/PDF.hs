@@ -2,7 +2,7 @@
 {-# LANGUAGE BangPatterns #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -293,10 +293,8 @@ createObjectByteStrings pdfState m =
 pdfByteString :: PDFDocumentInfo
               -> PDFRect -- ^ Default size for a page
               -> PDF a  -- ^ PDF action 
-              -> IO (B.ByteString) 
-pdfByteString infos rect m = do 
-    let content = createObjectByteStrings (defaultPdfSettings {defaultRect = rect, docInfo = infos} ) m
-    return content
+              -> B.ByteString
+pdfByteString infos rect m = createObjectByteStrings (defaultPdfSettings {defaultRect = rect, docInfo = infos} ) m
 
 -- | Generates a PDF document
 runPdf :: String -- ^ Name of the PDF document
@@ -305,7 +303,7 @@ runPdf :: String -- ^ Name of the PDF document
        -> PDF a  -- ^ PDF action 
        -> IO ()
 runPdf filename infos rect m = do
-  bytestring <- pdfByteString infos rect m 
+  let bytestring = pdfByteString infos rect m 
   B.writeFile filename bytestring
 
 
