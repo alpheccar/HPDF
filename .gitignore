@@ -6,4 +6,5 @@ test/test
 test/afm
 test/*.o
 .HTF
+.stack-work
 
