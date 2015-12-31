@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/alpheccar/HPDF.svg?branch=master)](https://travis-ci.org/alpheccar/HPDF)
-[![Hackage](https://img.shields.io/hackage/v/lens.svg)](https://hackage.haskell.org/package/HPDF)
+[![Hackage](https://img.shields.io/hackage/v/HPDF.svg)](https://hackage.haskell.org/package/HPDF)
 
 HPDF
 ====
