@@ -1,14 +1,20 @@
-TO BUILD AND INSTALL THE LIBRARY
-================================
+[![Build Status](https://travis-ci.org/alpheccar/HPDF.svg?branch=master)](https://travis-ci.org/alpheccar/HPDF)
+[![Hackage](https://img.shields.io/hackage/v/lens.svg)](https://hackage.haskell.org/package/HPDF)
 
-ghc-pkg unregister HPDF-0.x if you already installed an older version.
-ghc-pkg list to check which version is already installed.
+HPDF
+====
 
-runghc Setup.hs configure
-runghc Setup.hs build
-runghc Setup.hs haddock to generate again the HTML pages (optional - only if you have haddock installed)
-runghc Setup.hs install (you may have to use sudo)
-runghc Setup.hs clean (warning : will clean the HTML pages)
+A PDF library with support for several pages, page transitions, outlines, annotations, compression, colors, shapes, patterns, jpegs, fonts, typesetting ... 
+
+Have a look at the "Graphics.PDF.Documentation" module to see how to use it. 
+
+Or, download the package and look at the test.hs file in the Test folder. That file is giving an example of each feature.
+
+Documentation
+-------------
+
+The library documentation can be accessed on [Hackage](https://hackage.haskell.org/package/HPDF)
+
 
 TO TEST THE LIBRARY
 =====================
