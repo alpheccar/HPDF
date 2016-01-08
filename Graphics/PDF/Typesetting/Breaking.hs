@@ -589,12 +589,7 @@ spaceGlueBox settings s f =
                               , Penalty infinity
                               , Glue 0 (rightDilatationFactor*normalW) 0 (Just s)
                               ]                    
-spaceSize ::  Style s => s -- ^ The style 
-          -> PDFFloat                       
-spaceSize s =
-     let ws = spaceWidth s
-         h = scaleSpace . textStyle $ s
-     in  ws * h
+
      
 -- | When a paragraph is full and we start a new one we must clean the beginning paragraph and remove what has been left by the
 -- broken space
@@ -607,8 +602,8 @@ simplify ((Penalty _):l) = simplify l
 simplify l = l
                                    
 hyphenForJustification :: Style s => Justification -> s -> [Letter s]
-hyphenForJustification Centered s = [hyphenBox s,Glue 0 (centeredDilatationFactor*spaceSize s) 0 (Just s)]
-hyphenForJustification LeftJustification s = [hyphenBox s,Glue 0 (leftDilatationFactor*spaceSize s) 0 (Just s)]
+hyphenForJustification Centered s = [hyphenBox s,Glue 0 (centeredDilatationFactor*spaceWidth s) 0 (Just s)]
+hyphenForJustification LeftJustification s = [hyphenBox s,Glue 0 (leftDilatationFactor*spaceWidth s) 0 (Just s)]
 hyphenForJustification _ s = [hyphenBox s]
                         
                           

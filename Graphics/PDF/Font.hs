@@ -28,17 +28,7 @@ import qualified Data.Map as M
 foreign import ccall "ctext.h c_getLeading" cgetLeading :: Int -> Int
 foreign import ccall "ctext.h c_getAdvance" cgetAdvance :: Int -> Int -> Int
 foreign import ccall "ctext.h c_getDescent" cgetDescent :: Int -> Int
-foreign import ccall "ctext.h c_hasKern" hasKern :: Int -> Bool
 
-
-
--- Only useful for standard PDF fonts
-c2i :: Char -> Int 
-c2i = ord
-
--- Only useful for standard PDF fonts
-g2c :: PDFFont -> GlyphCode -> Char 
-g2c _ (GlyphCode c) = chr . fromIntegral $ c
 
 newtype GlyphSize = GlyphSize Int deriving(Eq,Ord,Num,Integral,Enum,Real)
 
@@ -50,7 +40,6 @@ class IsFont f where
     getDescent :: f -> PDFFloat
     getHeight :: f  -> PDFFloat
     fontSize :: f -> FontSize
-    deviceUnit :: f -> GlyphSize -> PDFFloat
     {-
     Font metrics
     -}
@@ -72,7 +61,7 @@ Standard PDF Fonts
 -- pixel size / 2048 gives factor 
 
 trueSize :: Int -> Int -> PDFFloat
-trueSize fontSize textSize = (fromIntegral (textSize*fontSize)) / 1000.0
+trueSize fs glyphSize = (fromIntegral (glyphSize*fs)) / 1000.0
 
 _getDescent :: PDFFont -> PDFFloat
 _getDescent (PDFFont n s) = trueSize s (cgetDescent (fromEnum n))
@@ -88,11 +77,8 @@ _getKern (i,GlyphCode a, GlyphCode b) =
   M.findWithDefault 0 k kerns
 
 _glyphWidth :: PDFFont -> GlyphCode -> PDFFloat
-_glyphWidth (PDFFont n s) c = 
-    let w = cgetAdvance (fromEnum n) (fromEnum c) 
-    in
-    trueSize s w
-
+_glyphWidth (PDFFont n s) c = trueSize s $ cgetAdvance (fromEnum n) (fromEnum c) 
+    
 _glyphChar :: PDFFont -> GlyphCode -> Maybe Char 
 _glyphChar _ (GlyphCode c) = Just (chr . fromIntegral $ c)
 
@@ -104,7 +90,6 @@ instance IsFont PDFFont where
     getDescent = _getDescent
     getHeight = _getHeight 
     getKern (PDFFont n s) a b = trueSize s $ _getKern ((fromEnum n),a,b)
-    deviceUnit (PDFFont _ s) g = trueSize s (fromIntegral g)
     fontSize (PDFFont _ s) = s
     glyphWidth = _glyphWidth
     glyphChar = _glyphChar

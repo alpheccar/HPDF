@@ -85,11 +85,14 @@ class ComparableStyle a => Style a where
     sentenceStyle :: a -- ^ The style
                   -> Maybe (Rectangle -> Draw b -> Draw ()) -- ^ Function receiving the bounding rectangle and the command for drawing the sentence
     sentenceStyle _ = Nothing
+
     -- ^ Modify the look of a word
     wordStyle :: a -- ^ The style
               -> Maybe (Rectangle -> StyleFunction -> Draw b -> Draw ()) -- ^ Word styling function
     wordStyle _ = Nothing
+    
     textStyle :: a -> TextStyle
+
     -- | A style may contain data changed from word to word
     updateStyle :: a -> a
     updateStyle = id

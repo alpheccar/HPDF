@@ -51,7 +51,7 @@ library
       vector >=0.10,
       errors,
       base64-bytestring >= 0.1,
-      text >= 1.2.2.0,
+      text >= 1.2.0,
       network-uri >= 2.6.0.3
   Default-language:  Haskell2010
 

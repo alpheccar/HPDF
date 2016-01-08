@@ -77,7 +77,8 @@ createWords r (Just (s,t,w)) ((Letter d a st):l) = (createText s (saveCurrentwor
  
 
 -- | horizontalPostProcess
-horizontalPostProcess :: (Style s) => [(PDFFloat,[Letter s],[Letter s])] -- ^ adjust ratio, hyphen style, list of letters or boxes
+horizontalPostProcess :: (Style s) 
+                      => [(PDFFloat,[Letter s],[Letter s])] -- ^ adjust ratio, hyphen style, list of letters or boxes
                       -> [(HBox s,[Letter s])] -- ^ List of lines
 horizontalPostProcess [] = []
 horizontalPostProcess ((r,l',r'):l) = let l'' = createWords r Nothing . simplify $ l' in

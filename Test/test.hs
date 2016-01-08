@@ -187,7 +187,7 @@ instance Style MyParaStyles where
     textStyle RedRectStyle = TextStyle (PDFFont Times_Roman 10) black black FillText 1.0 1.0 1.0 1.0
     textStyle DebugStyle = TextStyle (PDFFont Times_Roman 10) black black FillText 1.0 1.0 1.0 1.0
     textStyle Crazy = TextStyle (PDFFont Times_Roman 10) red red FillText 1.0 1.0 1.0 1.0
-    textStyle (SuperCrazy _ _) = TextStyle (PDFFont Times_Roman 12) black black FillText 1.0 2.0 0.5 0.5
+    textStyle (SuperCrazy _ _) = TextStyle (PDFFont Times_Roman 12) black black FillText 1.0 1.5 0.5 0.5
     textStyle BlueStyle = TextStyle (PDFFont Times_Roman 10) black black FillText 1.0 1.0 1.0 1.0
     
     sentenceStyle BlueStyle = Just $ \r d -> do
@@ -403,7 +403,7 @@ typesetTest test page = do
                 setStyle RedRectStyle
                 txt $ "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
                 setStyle Normal
-            glue 3 0 0
+            glue 10 0 0
             paragraph $ do
                 txt $ "Excepteur sint occaecat cupidatat non"
                 txt $ " proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
@@ -411,7 +411,7 @@ typesetTest test page = do
                 txt $ " And now, a super crazy style to test the code. "
                 setStyle Normal
                 txt $ "Return to a normal style :-)"
-            glue 3 0 0
+            glue 10 0 0
             paragraph $ do
                 txt $ "More crazy styles ... "
                 setStyle Crazy
@@ -424,8 +424,8 @@ typesetTest test page = do
               txt $ "presence confirmed the ultra hip factor of the crowd in "
               txt $ "attendance. The performances were strong and varied, "
               txt $ "and the experience of tapping into the Burlesque "
-              txt $ "renaissance /--/-- mixed in with a little business of "
-              txt $ "fashion /--/-- was a great lesson learned on how to throw "
+              txt $ "renaissance mixed in with a little business of "
+              txt $ "fashion was a great lesson learned on how to throw "
               txt $ "an authentic fashion event. "
               
         normalPar :: Para MyParaStyles ()
