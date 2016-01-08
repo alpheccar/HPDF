@@ -21,47 +21,58 @@ module Graphics.PDF.Data.Trie(
     
 import Prelude hiding(lookup)
 import qualified Data.Map as M
+import qualified Data.Text as T
 
 data MapString v = EmptyTrie
                  | Trie (Maybe v) (M.Map Char (MapString v))
                  deriving(Eq,Show)
                  
-#if __GLASGOW_HASKELL__ >= 610
 myLookup :: Ord k => k -> M.Map k a ->[a]
 myLookup k d = case M.lookup k d of
     Just r -> [r]
     _ -> []
-#endif
                  
-fromList :: [(String,v)] -> MapString v
+fromList :: [(T.Text,v)] -> MapString v
 fromList = foldr addElem EmptyTrie
  where
      addElem (key,v) a = insert key v a
                 
-lookup :: String
+lookup :: T.Text
        -> MapString v
        -> [v]
 lookup _ EmptyTrie = []
-lookup [] (Trie (Just a) _) = [a]
-lookup [] (Trie Nothing _) = []
-#if __GLASGOW_HASKELL__ >= 610
-lookup (c:s) (Trie Nothing tc) = (myLookup c tc >>= lookup s)
-lookup (c:s) (Trie (Just tn) tc) = tn:(myLookup c tc >>= lookup s)
-#else
-lookup (c:s) (Trie Nothing tc) = (M.lookup c tc >>= lookup s)
-lookup (c:s) (Trie (Just tn) tc) = tn:(M.lookup c tc >>= lookup s)
-#endif
+lookup t (Trie (Just tn) tc) | T.null t = [tn]
+                             | otherwise = 
+                                  let c = T.head t 
+                                      s = T.tail t
+                                  in 
+                                  tn:(myLookup c tc >>= lookup s)
+
+lookup t  (Trie Nothing tc) | T.null t = []
+                            | otherwise = 
+                                  let c = T.head t 
+                                      s = T.tail t
+                                  in 
+                                  myLookup c tc >>= lookup s
+
    
-insert :: String
+insert :: T.Text
        -> v
        -> MapString v
        -> MapString v
-insert [] v EmptyTrie = Trie (Just v) M.empty
-insert (k:l) v EmptyTrie = Trie Nothing (M.singleton k (insert l v EmptyTrie))
+insert t v EmptyTrie | T.null t = Trie (Just v) M.empty
+                     | otherwise = 
+                          let k = T.head t 
+                              l = T.tail t
+                          in 
+                          Trie Nothing (M.singleton k (insert l v EmptyTrie))
 
-insert [] v (Trie _ b) = Trie (Just v) b
-insert (k:s) v (Trie tn tc) = 
-  case M.lookup k tc of
-    Nothing -> Trie tn (M.insert k (insert s v EmptyTrie) tc)
-    Just f -> Trie tn (M.insert k (insert s v f) tc)
+insert t v (Trie tn tc) | T.null t = Trie (Just v) tc
+                        | otherwise = 
+                            let k = T.head t 
+                                s = T.tail t
+                            in 
+                            case M.lookup k tc of
+                              Nothing -> Trie tn (M.insert k (insert s v EmptyTrie) tc)
+                              Just f -> Trie tn (M.insert k (insert s v f) tc)
     

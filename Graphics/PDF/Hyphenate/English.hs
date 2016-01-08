@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 ---------------------------------------------------------
 -- |
 -- Copyright   : (c) 2006-2016, alpheccar.org
@@ -22,12 +24,13 @@ module Graphics.PDF.Hyphenate.English (
      
 import qualified Graphics.PDF.Data.Trie as T
 import Graphics.PDF.Hyphenate.LowLevel
+import qualified Data.Text as T
 
 -- | List of exception
 exceptions :: T.MapString [Int]
 exceptions = mkExceptions exceptionList
 
-exceptionList :: [String]   
+exceptionList :: [T.Text]   
 exceptionList = [
     "as-so-ciate"
   , "as-so-ciates" 
@@ -48,7 +51,7 @@ exceptionList = [
 patterns :: T.MapString [Int]
 patterns = mkPatterns patternList
 
-patternList :: [String]
+patternList :: [T.Text]
 patternList = 
   -- Knuth and Liang's original hyphenation patterns from classic TeX.
   -- In the public domain.

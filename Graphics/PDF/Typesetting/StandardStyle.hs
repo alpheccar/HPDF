@@ -37,6 +37,6 @@ instance ComparableStyle StandardParagraphStyle where
   isSameStyleAs NormalParagraph NormalParagraph = True 
   
 instance Style StandardStyle where
-    textStyle (Font a sc fc) = TextStyle a sc fc FillText 1.0 1.0 1.0 1.0    
+    textStyle (Font a sc fc) = TextStyle a sc fc FillText 1.0 1.0 1.0 1.0 
 
 instance ParagraphStyle StandardParagraphStyle StandardStyle       

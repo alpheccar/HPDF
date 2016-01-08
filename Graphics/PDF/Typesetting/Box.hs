@@ -31,6 +31,7 @@ import Graphics.PDF.Draw
 import Graphics.PDF.Text
 import Graphics.PDF.Shapes
 import Graphics.PDF.Coordinates
+import Graphics.PDF.Font
 
 -- | Make a drawing box. A box object containing a Draw value
 mkDrawBox :: Draw () -> DrawBox

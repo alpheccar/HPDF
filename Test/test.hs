@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses,OverloadedStrings #-}
 ---------------------------------------------------------
 -- |
 -- Copyright   : (c) 2006-2013, alpheccar.org
@@ -19,8 +19,14 @@ import Graphics.PDF
 import Penrose
 import System.Random
 import qualified Data.Vector.Unboxed as U
-            
-fontDebug :: PDFFont -> PDFString -> Draw ()
+import qualified Data.Text as T
+import Network.URI 
+import Data.Maybe(fromJust)
+import Graphics.PDF.Font
+
+alpheccarURL = fromJust $ parseURI "http://www.alpheccar.org"
+
+fontDebug :: PDFFont -> T.Text -> Draw ()
 fontDebug f t = do
      drawText $ do
          setFont f
@@ -29,7 +35,7 @@ fontDebug f t = do
          renderMode FillText
          displayText t
          startNewLine
-         displayText $ toPDFString "Another little test"
+         displayText "Another little test"
      strokeColor $ Rgb 1 0 0
      stroke $ Line 10 200 612 200
      fill $ Circle 10 200 10
@@ -112,16 +118,16 @@ testAnnotation p = do
         r
  where r = do
         strokeColor red
-        newAnnotation (URLLink (toPDFString "Go to my blog") [0,0,200,100] "http://www.alpheccar.org" True)
-        drawText $ text (PDFFont Times_Roman 12) 10 30 (toPDFString "Go to my blog")
+        newAnnotation (URLLink  ("Go to my blog") [0,0,200,100] alpheccarURL True)
+        drawText $ text (PDFFont Times_Roman 12) 10 30 ("Go to my blog")
         stroke $ Rectangle 0 (200 :+ 100)
-        newAnnotation (TextAnnotation (toPDFString "Key annotation") [100,100,130,130] Key)
+        newAnnotation (TextAnnotation ("Key annotation éàü") [100,100,130,130] Key)
  
 textTest :: Draw ()
 textTest = do
     strokeColor red
     fillColor blue
-    fontDebug (PDFFont Times_Roman 48) (toPDFString "This is a \\test (éèçàù)!")
+    fontDebug (PDFFont Times_Roman 48) ("This is a \\test (éèçàù)!")
 
               
 testImage ::  JpegFile -> PDFReference PDFPage -> PDF ()
@@ -290,9 +296,9 @@ instance ParagraphStyle MyVertStyles MyParaStyles  where
         fillAndStroke r
     interline _ = Nothing
         
-    paragraphChange (BluePara _) _ (AChar st c _:l) = 
+    paragraphChange (BluePara _) _ (AGlyph st c _:l) = 
         let f = PDFFont Helvetica_Bold 45
-            w' = charWidth f c 
+            w' = glyphWidth f c 
             charRect = Rectangle (0 :+ (- getDescent f)) (w' :+ (getHeight f - getDescent f))
             c' = mkLetter (0,0,0) Nothing . mkDrawBox $ do
                 withNewContext $ do
@@ -305,7 +311,7 @@ instance ParagraphStyle MyVertStyles MyParaStyles  where
                         renderMode AddToClip
                         textStart 0 0
                         setFont f
-                        displayText (toPDFString [c])
+                        displayGlyphs (glyph c)
                     paintWithShading (AxialShading 0 (- getDescent f) w' (getHeight f - getDescent f) (Rgb 1 0 0) (Rgb 0 0 1)) (addShape charRect)
         in
         (BluePara w', c':l)
@@ -512,8 +518,8 @@ typesetTest test page = do
               strokeColor red
               fillColor blue
               stroke $ Rectangle (10 :+ 0) ((10+maxw) :+ 100)
-              drawText $ text (PDFFont Helvetica_Bold 24) 10 100 (toPDFString "Lorem ipsum")
-              stroke $ Line 10 120 (10 + textWidth (PDFFont Helvetica_Bold 24) (toPDFString "Lorem ipsum") ) 120 
+              drawText $ text (PDFFont Helvetica_Bold 24) 10 100 ("Lorem ipsum")
+              stroke $ Line 10 120 (10 + textWidth (PDFFont Helvetica_Bold 24) ("Lorem ipsum") ) 120 
               displayFormattedText (Rectangle (10 :+ 0) ((10+maxw) :+ 100)) NormalParagraph (Font (PDFFont Times_Roman 10) black black) $ do
                   setJustification LeftJustification
                   paragraph $ do
@@ -570,82 +576,82 @@ textBoxes = do
 testAll :: JpegFile -> PDF ()
 testAll jpg = do
     page1 <- addPage Nothing
-    newSection (toPDFString "Typesetting") Nothing Nothing $ do
-     newSection (toPDFString "Normal text") Nothing Nothing $ do
+    newSection  "Typesetting" Nothing Nothing $ do
+     newSection "Normal text" Nothing Nothing $ do
         typesetTest 1 page1
      
      page2 <- addPage Nothing
-     newSection (toPDFString "Debug text") Nothing Nothing $ do
+     newSection "Debug text" Nothing Nothing $ do
             typesetTest 2 page2
           
      page3 <- addPage Nothing
-     newSection (toPDFString "Circle text") Nothing Nothing $ do
+     newSection "Circle text" Nothing Nothing $ do
             typesetTest 3 page3
           
      page3a <- addPage Nothing
-     newSection (toPDFString "Standard styles") Nothing Nothing $ do
+     newSection "Standard styles" Nothing Nothing $ do
             typesetTest 4 page3a
             
      page3b <- addPage Nothing
-     newSection (toPDFString "Justifications") Nothing Nothing $ do
+     newSection "Justifications" Nothing Nothing $ do
             typesetTest 5 page3b
             
      page3d <- addPage Nothing
-     newSection (toPDFString "New lines") Nothing Nothing $ do
+     newSection "New lines" Nothing Nothing $ do
             typesetTest 6 page3d
           
      page3c <- addPage Nothing
-     newSection (toPDFString "Container") Nothing Nothing $ do
+     newSection  "Container" Nothing Nothing $ do
             containerTest page3c (Rectangle (10 :+ 300)  (100 :+ 100)) testText
             containerTest page3c (Rectangle (210 :+ 300) (200 :+ 100)) $ do
                 setJustification Centered
                 testText
         
     page4 <- addPage Nothing
-    newSection (toPDFString "Shapes") Nothing Nothing $ do
+    newSection  "Shapes" Nothing Nothing $ do
         
-      newSection (toPDFString "Geometry") Nothing Nothing $ do
+      newSection "Geometry" Nothing Nothing $ do
          drawWithPage page4 $ do
            geometryTest 
            
       page5 <- addPage Nothing
-      newSection (toPDFString "Line style") Nothing Nothing $ do
+      newSection "Line style" Nothing Nothing $ do
           drawWithPage page5 $ do
             lineStyle
             
       page6 <- addPage Nothing
-      newSection (toPDFString "Object reuse") Nothing Nothing $ do
+      newSection "Object reuse" Nothing Nothing $ do
            r <- createPDFXForm 0 0 200 200 lineStyle
            drawWithPage page6 $ do
                 drawXObject r
             
     page7 <- addPage Nothing
-    newSectionWithPage (toPDFString "Painting") Nothing Nothing page7 $ do
-     newSection (toPDFString "Patterns") Nothing Nothing $ do
+    newSectionWithPage "Painting" Nothing Nothing page7 $ do
+     newSection "Patterns" Nothing Nothing $ do
         patternTest page7
         
      page8 <- addPage Nothing
-     newSection (toPDFString "Shading") Nothing Nothing $ do
+     newSection "Shading" Nothing Nothing $ do
         drawWithPage page8 $ do
           shadingTest
           
     page9 <- addPage Nothing
-    newSection (toPDFString "Media") Nothing Nothing $ do
-      newSection (toPDFString "image") Nothing Nothing $ do   
+    newSection "Media" Nothing Nothing $ do
+      newSection "image" Nothing Nothing $ do   
            testImage jpg page9  
            
     page10 <- addPage Nothing
-    newSection (toPDFString "Annotations") Nothing Nothing $ do
+    newSection "Annotations" Nothing Nothing $ do
           testAnnotation page10
           
     page11 <- addPage Nothing
-    newSection (toPDFString "Text encoding") Nothing Nothing $ do
+    newSection  "Text encoding" Nothing Nothing $ do
       drawWithPage page11 $ do
         textTest
-    newSection (toPDFString "Fun") Nothing Nothing $ do
+    newSection  "Fun" Nothing Nothing $ do
         penrose
     page12 <- addPage Nothing
-    newSection (toPDFString "Text box") Nothing Nothing $ do
+    newSection  "Text box" Nothing Nothing $ do
       drawWithPage page12 $ do
         textBoxes
     page13 <- addPage Nothing
@@ -656,7 +662,7 @@ main :: IO()
 main = do
     let rect = PDFRect 0 0 600 400
     Right jpg <- readJpegFile "logo.jpg"  
-    runPdf "demo.pdf" (standardDocInfo { author=toPDFString "alpheccar", compressed = False}) rect $ do
+    runPdf "demo.pdf" (standardDocInfo { author= "alpheccar éèçàü", compressed = False}) rect $ do
         testAll jpg
     --print $ charWidth (PDFFont Times_Roman 1) '('
      

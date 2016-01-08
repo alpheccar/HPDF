@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Penrose (
  penrose
  )where
@@ -102,7 +103,7 @@ a' s = withNewContext $ do
 penrose :: PDF ()  
 penrose  =  do
     page <- addPage (Just (PDFRect 0 0 (round (1.5*width)) (round width)))
-    newSection (toPDFString "Penrose") Nothing Nothing $ do
+    newSection "Penrose" Nothing Nothing $ do
         drawWithPage page $ do
             applyMatrix (translate (20 :+ 5))
             applyMatrix (rotate . Degree $ 36) 

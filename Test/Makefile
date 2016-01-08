@@ -1,6 +1,9 @@
 debug:
 	ghc -o test -O -package-db ../dist/package.conf.inplace --make test.hs
 
+onepage:
+	ghc -o test -O -package-db ../dist/package.conf.inplace --make onepage.hs
+
 profile:
 	ghc -o test -prof -fprof-auto -rtsopts -O -package-db ../dist/package.conf.inplace --make test.hs
 	
@@ -23,7 +26,7 @@ clean:
 	rm -f *.hi
 	rm -f *.exe
 	rm -f test.prof
-	rm -f *.pdf
+	rm -f demo.pdf
 	rm -rf bin
 	rm -rf interfaces
 	rm -rf c

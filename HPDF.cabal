@@ -1,5 +1,5 @@
 Name: HPDF
-Version: 1.4.10
+Version: 1.5.0
 cabal-version: >=1.10
 License: BSD3
 License-file:LICENSE
@@ -23,7 +23,7 @@ extra-source-files:
   README.txt
   NEWS.txt
   TODO.txt
-  changelog.md
+  changelog
 
 source-repository head
   type:     git
@@ -50,7 +50,9 @@ library
       mtl,
       vector >=0.10,
       errors,
-      base64-bytestring >= 0.1
+      base64-bytestring >= 0.1,
+      text >= 1.2.2.0,
+      network-uri >= 2.6.0.3
   Default-language:  Haskell2010
 
   ghc-options: -Wall -fno-warn-tabs -funbox-strict-fields  -O2
@@ -69,6 +71,8 @@ library
      Graphics.PDF.Document
      Graphics.PDF.Shapes
      Graphics.PDF.Text
+     Graphics.PDF.Font
+     Graphics.PDF.Typesetting.WritingSystem
      Graphics.PDF.Navigation
      Graphics.PDF.Image
      Graphics.PDF.Action

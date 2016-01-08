@@ -90,6 +90,7 @@ import Graphics.PDF.Resources(emptyResource)
 import Data.Binary.Builder(Builder,fromLazyByteString, toLazyByteString)
 import Graphics.PDF.LowLevel.Serializer
 import Data.List(unfoldr)
+import qualified Data.Text as T
 
 -- | Create a new PDF document and return a first page
 -- The page is using the document size by default
@@ -190,9 +191,9 @@ instance PdfObject PDFTrailer where
      , (PDFName "Info",AnyPdfObject . PDFDictionary . M.fromList $ allInfos)
      ]
      where
-      allInfos = [ (PDFName "Author",AnyPdfObject . author $ infos)
-                 , (PDFName "Subject",AnyPdfObject . subject $ infos)
-                 , (PDFName "Producer",AnyPdfObject $ toPDFString "HPDF - The Haskell PDF Library" )
+      allInfos = [ (PDFName "Author",AnyPdfObject . toPDFString . author $ infos)
+                 , (PDFName "Subject",AnyPdfObject . toPDFString . subject $ infos)
+                 , (PDFName "Producer",AnyPdfObject $ toPDFString (T.pack "HPDF - The Haskell PDF Library" ))
                  ]
 
 instance PdfLengthInfo PDFTrailer where
@@ -243,7 +244,7 @@ defaultPdfSettings =
            , streams = IM.empty
            , catalog = PDFReference 0
            , defaultRect = PDFRect 0 0 600 400 
-           , docInfo = standardDocInfo { author=toPDFString "Unknown", compressed = True}
+           , docInfo = standardDocInfo { author=T.pack "Unknown", compressed = True}
            , outline = Nothing
            , currentPage = Nothing
            , xobjectBound = IM.empty

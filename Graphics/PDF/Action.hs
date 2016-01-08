@@ -20,6 +20,7 @@ module Graphics.PDF.Action(
      
 import Graphics.PDF.LowLevel.Types
 import qualified Data.Map as M
+import Network.URI 
 
 
 --  Media action
@@ -32,7 +33,7 @@ import qualified Data.Map as M
 class PdfObject a => Action a
 
 -- | Action of going to an URL
-newtype GoToURL = GoToURL String
+newtype GoToURL = GoToURL URI
 
 --data Rendition = Rendition
 --instance PdfObject Rendition where
@@ -52,11 +53,18 @@ newtype GoToURL = GoToURL String
 --  Action to control a media
 --data ControlMedia = ControlMedia MediaAction Int (PDFReference Rendition)
     
+urlToPdfString :: URI -> AsciiString 
+urlToPdfString uri = 
+    let s = uriToString id uri "" 
+    in
+    toAsciiString s
+
+
 instance PdfObject GoToURL where
     toPDF (GoToURL s) = toPDF . PDFDictionary . M.fromList $
                          [ (PDFName "Type",AnyPdfObject . PDFName $ "Action")
                          , (PDFName "S",AnyPdfObject (PDFName "URI"))
-                         , (PDFName "URI",AnyPdfObject (toPDFString s))
+                         , (PDFName "URI",AnyPdfObject (urlToPdfString s))
                          ]
 instance Action GoToURL
 

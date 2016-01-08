@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 ---------------------------------------------------------
 -- |
 -- Copyright   : (c) 2006-2016, alpheccar.org
@@ -22,6 +24,7 @@ import qualified Graphics.PDF.Data.Trie as T
 import  Graphics.PDF.Data.Trie(MapString)
 import Data.Char(isDigit)
 import Data.List(unfoldr)
+import qualified Data.Text as TE
 
 -- | Hyphenation databases
 data HyphenationDatabase = English (Maybe (MapString [Int]))
@@ -29,17 +32,17 @@ data HyphenationDatabase = English (Maybe (MapString [Int]))
 
 
 
-mkExceptions :: [String] -> T.MapString [Int]
+mkExceptions :: [TE.Text] -> T.MapString [Int]
 mkExceptions = T.fromList . map createException
   where
     createException x = (removeHyphen x,exceptionPoints x)
     
-mkPatterns :: [String] -> T.MapString [Int]
+mkPatterns :: [TE.Text] -> T.MapString [Int]
 mkPatterns = T.fromList . map convertPattern
 
 -- | Create a custom language for hyphenation
-mkCustomLanguage :: [String] -- ^ Exceptions
-                 -> [String] -- ^ Patterns
+mkCustomLanguage :: [TE.Text] -- ^ Exceptions
+                 -> [TE.Text] -- ^ Patterns
                  -> HyphenationDatabase
 mkCustomLanguage e p = CustomLanguage (mkExceptions e) (mkPatterns p)
 
@@ -62,29 +65,29 @@ simplify (a:b:c:l) | a /= 0 && b == 0 && c /= 0 = a:simplify (c:l)
 simplify a = a                
    
 -- | Split a patterns into a list of numbers                    
-split :: (Char -> Bool) -> String -> [Int]
+split :: (Char -> Bool) -> TE.Text -> [Int]
 split f = simplify . map toNumber . unfoldr (split' f)
 
-split' :: (Char -> Bool) -> String -> Maybe (Char, String)
-split' f l | null l = Nothing
-           | otherwise = if null h then Just (' ', drop 1 t) else Just (head h, t)
-    where (h, t) = span f l
+split' :: (Char -> Bool) -> TE.Text -> Maybe (Char, TE.Text)
+split' f l | TE.null l = Nothing
+           | otherwise = if TE.null h then Just (' ', TE.tail t) else Just (TE.head h, t)
+    where (h, t) = TE.span f l
   
 -- | Convert a pattern into a list of number and a normal word
-convertPattern :: String -> (String,[Int])
+convertPattern :: TE.Text -> (TE.Text,[Int])
 convertPattern s = 
-  let s' = filter isChar s
+  let s' = TE.filter isChar s
       p =  split isDigit s
   in
   (s',p)
   
 -- | Remove hyphens from an excepyion word
-removeHyphen :: String -> String
-removeHyphen = filter ((/=) '-')
+removeHyphen :: TE.Text -> TE.Text
+removeHyphen = TE.filter ((/=) '-')
 
 -- | Get exception points
-exceptionPoints :: String -> [Int]
-exceptionPoints s = 0 : map onlyHyphen s
+exceptionPoints :: TE.Text -> [Int]
+exceptionPoints s = 0 : (map onlyHyphen . TE.unpack $ s)
   where
     onlyHyphen '-' = 1
     onlyHyphen _ = 0

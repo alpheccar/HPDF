@@ -284,6 +284,7 @@ class (ComparableStyle a, Style s) => ParagraphStyle a s | a -> s where
                    -> Maybe (Rectangle -> Draw b -> Draw ()) -- ^ Function used to style a paragraph
     paragraphStyle _ = Nothing
 
+
 -- | Get the delta used to position a box with non rectangular shapes
 getBoxDelta :: VBox ps s -> PDFFloat
 getBoxDelta (Paragraph _ _ _ _) = 0.0

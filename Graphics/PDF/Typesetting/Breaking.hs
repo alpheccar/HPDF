@@ -1,6 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ViewPatterns #-}
+
 ---------------------------------------------------------
 -- |
 -- Copyright   : (c) 2006-2016, alpheccar.org
@@ -18,7 +20,7 @@ module Graphics.PDF.Typesetting.Breaking (
    Letter(..)
  , formatList
  , infinity
- , createChar
+ , createGlyph
  , kernBox
  , glueBox
  , penalty
@@ -47,8 +49,9 @@ import qualified Data.Map as Map
 import Graphics.PDF.Text
 import Graphics.PDF.Typesetting.Box
 import Data.Maybe(fromJust)
-import Graphics.PDF.Hyphenate
-
+import Graphics.PDF.Font
+import Graphics.PDF.Typesetting.WritingSystem
+import qualified Data.Text as T(Text)
 --import Debug.Trace
 
 data Justification = FullJustification
@@ -70,7 +73,7 @@ data Letter s = Letter BoxDimension !AnyBox !(Maybe s) -- ^ Any box as a letter
               | Glue !PDFFloat !PDFFloat !PDFFloat !(Maybe s) -- ^ A glue with style to know if it is part of the same sentence
               | FlaggedPenalty !PDFFloat !Int !s -- ^ Hyphen point
               | Penalty !Int -- ^ Penalty
-              | AChar !s !Char !PDFFloat -- ^ A char
+              | AGlyph !s !GlyphCode !PDFFloat -- ^ A glyph
               | Kern !PDFFloat !(Maybe s) -- ^ A kern : non dilatable and non breakable glue
              
 class MaybeGlue a where
@@ -98,7 +101,7 @@ glueSize w y z r =
 letterWidth :: Letter s -- ^ letter
             -> PDFFloat -- ^ Adjustement ratio
             -> PDFFloat -- ^ Width
-letterWidth (AChar _ _ w) _ = w
+letterWidth (AGlyph _ _ w) _ = w
 letterWidth (Letter dim _ _) _ = boxWidth dim
 letterWidth (Glue w yi zi _) r =  glueSize w yi zi r
 letterWidth (FlaggedPenalty _ _ _) _ = 0
@@ -110,7 +113,7 @@ instance Show (Letter s) where
    show (Glue a b c _) = "(Glue " ++ show a ++ " " ++ show b ++ " " ++ show c ++ ")"
    show (FlaggedPenalty a b _) = "(FlaggedPenalty " ++ show a ++ " " ++ show b ++  ")"
    show (Penalty a) = "(Penalty " ++ show a ++ ")"
-   show (AChar _ t _) = "(Text " ++ show t ++ ")"
+   show (AGlyph _ t _) = "(Glyph " ++ show t ++ ")"
    show (Kern _ _) = "(Kern)"
 
 type CB a = (PDFFloat,PDFFloat,PDFFloat,Int,a)
@@ -227,11 +230,12 @@ data BRState = BRState { firstPassTolerance :: !PDFFloat -- ^ Default value 100
                        , flagged_demerit :: !PDFFloat -- ^ Default value 1000
                        , line_penalty :: !PDFFloat -- ^ Default value 10
                        , centered :: !Justification -- ^ Default value false
-                       , hyphenation :: !HyphenationDatabase -- ^ Default value English
+                       , writingSystem :: !WritingSystem
                        }
                        
 defaultBreakingSettings :: BRState
-defaultBreakingSettings = BRState 100 100 50 1000 1000 10 FullJustification (English Nothing)
+defaultBreakingSettings = BRState 100 100 50 1000 1000 10 FullJustification (Latin English)
+
                   
 
 
@@ -292,7 +296,7 @@ createBreaknode prev a@(ZList _ (_,_,_,_,Glue _ _ _ _) []) = breakN prev False a
 createBreaknode prev a@(ZList _ (_,_,_,_,_) []) = breakN prev False a
 createBreaknode prev a@(ZList _ (_,_,_,_,FlaggedPenalty _ p _) _) | p <= infinity = breakN prev True a
 createBreaknode prev a@(ZList _ (_,_,_,_,Letter _ _ _) _) = breakN prev False a
-createBreaknode prev a@(ZList _ (_,_,_,_,AChar _ _ _) _) = breakN prev False a
+createBreaknode prev a@(ZList _ (_,_,_,_,AGlyph _ _ _) _) = breakN prev False a
 createBreaknode prev a@(ZList _ (_,_,_,_,Kern _ _) _) = breakN prev False a
 createBreaknode prev z = 
     let BreakNode a b c d _ e f g = createBreaknode prev (moveRight z) in
@@ -304,7 +308,7 @@ breakN prev t a =  let (w,y,z) = getDim a in BreakNode w y z 0.0 t 0 0.0 prev
 -- | Get cumulated dimension for following box
 getDim :: ZList s -> (PDFFloat,PDFFloat,PDFFloat)
 getDim (ZList _ (w,y,z,_,Letter _ _ _) _) =  (w,y,z)
-getDim (ZList _ (w,y,z,_,AChar _ _ _) _) =  (w,y,z)
+getDim (ZList _ (w,y,z,_,AGlyph _ _ _) _) =  (w,y,z)
 getDim (ZList _ (w,y,z,_,Kern _ _) _) =  (w,y,z)
 getDim (ZList _ (w,y,z,_,_) []) = (w,y,z)
 getDim a = if theEnd a then error "Can't find end of paragraph" else getDim (moveRight a)
@@ -332,7 +336,7 @@ isFeasibleBreakpoint False (ZList _ (_,_,_,_,FlaggedPenalty _ _ _) _) = False
 isFeasibleBreakpoint _ (ZList _ (_,_,_,_,Penalty p) _) = p < infinity
 isFeasibleBreakpoint _ (ZList NoCB _ _) = False
 isFeasibleBreakpoint _ (ZList (OneCB (_,_,_,_,Letter _ _ _)) (_,_,_,_,Glue _ _ _ _) _) = True
-isFeasibleBreakpoint _ (ZList (OneCB (_,_,_,_,AChar _ _ _)) (_,_,_,_,Glue _ _ _ _) _) = True
+isFeasibleBreakpoint _ (ZList (OneCB (_,_,_,_,AGlyph _ _ _)) (_,_,_,_,Glue _ _ _ _) _) = True
 isFeasibleBreakpoint _ _ = False
 
 
@@ -472,7 +476,13 @@ analyzeBoxes settings pass fmaxw actives lastz z =
 
 -- | Create an hyphen box
 hyphenBox :: Style s => s -> Letter s
-hyphenBox s = AChar s '-' (charWidth (textFont . textStyle $ s) '-')
+hyphenBox s = 
+  let f = textFont . textStyle $ s
+      maybeHyphen = hyphenGlyph f 
+  in 
+  case maybeHyphen of 
+  Just h -> AGlyph s h (glyphWidth f h)
+  Nothing -> Kern 0 Nothing
 
 -- Use a list of breakpoint and adjustement ratios to generate a list of lines. Bool means if the break was done on a flagged penalty (hyphen)
 cutList :: Style s => Justification -> [Letter s] -> Int -> [(PDFFloat,Int,Bool)] -> [(PDFFloat,[Letter s],[Letter s])]
@@ -531,7 +541,8 @@ glueBox s w y z = Glue w y z s
 spaceWidth :: Style s => s -- ^ The style
            -> PDFFloat
 spaceWidth  s =  
-    let ws = (textWidth (textFont . textStyle $ s) (toPDFString " ") )
+    let f = (textFont . textStyle $ s) 
+        ws = glyphWidth f (spaceGlyph f)
         h = scaleSpace . textStyle $ s
     in
       ws * h  
@@ -554,7 +565,7 @@ spaceGlueBox :: Style s => BRState -- ^ Paragraph settings
              -> PDFFloat
              -> [Letter s]
 spaceGlueBox settings s f = 
-     let ws = (textWidth (textFont . textStyle $ s) (toPDFString " ") )
+     let ws = spaceWidth s
          h = scaleSpace . textStyle $ s
          sy = scaleDilatation . textStyle $ s
          sz = scaleCompression . textStyle $ s
@@ -581,7 +592,7 @@ spaceGlueBox settings s f =
 spaceSize ::  Style s => s -- ^ The style 
           -> PDFFloat                       
 spaceSize s =
-     let ws = (textWidth (textFont . textStyle $ s) (toPDFString " ") )
+     let ws = spaceWidth s
          h = scaleSpace . textStyle $ s
      in  ws * h
      
@@ -607,34 +618,72 @@ penalty :: Int -- ^ Penalty value
 penalty p = Penalty p
 
 -- | Create a box containing text
-createChar :: s -- ^ Char style
-           -> PDFFloat -- ^ Char width
-           -> Char -- ^ Char code
-           -> Letter s
-createChar s w t = AChar s t w
+createGlyph :: s -- ^ Char style
+            -> GlyphCode
+            -> PDFFloat -- ^ Char width
+            -> Letter s
+createGlyph s c w = AGlyph s c w
 
 
--- | Create boxes for the letters
-createLetterBoxes :: Style s => BRState
-                  -> s -- ^ Letter style
-                  -> [(PDFFloat,Char)] -- ^ Letter and size 
-                  -> [Letter s] -- ^ Boxes
-createLetterBoxes _ _ [] = []  
-createLetterBoxes settings s ((_,'/'):(w,'-'):l) = hyphenPenalty settings s w : createLetterBoxes settings s l
-createLetterBoxes settings s ((w',','):(_,' '):l) = (createChar s w' ',') : ((spaceGlueBox settings s 2.0) ++ createLetterBoxes settings s l)
-createLetterBoxes settings s ((w',';'):(_,' '):l) = (createChar s w' ';') : ((spaceGlueBox settings s 2.0) ++ createLetterBoxes settings s l)
-createLetterBoxes settings s ((w','.'):(_,' '):l) = (createChar s w' '.') : ((spaceGlueBox settings s 2.0) ++ createLetterBoxes settings s l)
-createLetterBoxes settings s ((w',':'):(_,' '):l) = (createChar s w' ':') : ((spaceGlueBox settings s 2.0) ++ createLetterBoxes settings s l)
-createLetterBoxes settings s ((w','!'):(_,' '):l) = (createChar s w' '!') : ((spaceGlueBox settings s 2.0) ++ createLetterBoxes settings s l)
-createLetterBoxes settings s ((w','?'):(_,' '):l) = (createChar s w' '?') : ((spaceGlueBox settings s 2.0) ++ createLetterBoxes settings s l)
-createLetterBoxes settings s ((_,' '):l) = (spaceGlueBox settings s 1.0) ++ createLetterBoxes settings s l
-createLetterBoxes settings s ((w,t):l) = (createChar s w t) : createLetterBoxes settings s l
+
+{-
+  
+Breaking a text with specific hyphen handling if it make sense
+
+-}
+
+
+
+
+ripText :: Style s 
+        => s
+        -> BRState
+        -> [SpecialChar] -- ^ Special meaning glyph
+        -> [Letter s] -- ^ List of chars and char width taking into account kerning
+ripText s settings [] = []
+ripText s settings (NormalChar ca:BreakingHyphen:NormalChar cb:l) = 
+    let f = (textFont . textStyle $ s) 
+        ga = charGlyph f ca 
+        gb = charGlyph f cb
+        oldKerning = getKern f ga gb
+        la = createGlyph s ga ((glyphWidth f ga) + oldKerning)
+        lb = createGlyph s gb (glyphWidth f gb)
+        maybeH = hyphenGlyph f
+    in 
+    case maybeH of 
+    Nothing -> la:lb:ripText s settings l
+    Just h -> 
+          let newKerning = getKern f ga h 
+              w = glyphWidth f h + newKerning - oldKerning
+          in
+          la:hyphenPenalty settings s w:lb:ripText s settings l
+ripText s settings (NormalChar ca:NormalChar cb:l) = 
+    let f = (textFont . textStyle $ s) 
+        ga = charGlyph f ca 
+        gb = charGlyph f cb
+        k = getKern f ga gb
+        la = createGlyph s ga ((glyphWidth f ga) + k)
+        lb = createGlyph s gb (glyphWidth f gb)
+    in 
+    la:lb:ripText s settings l
+ripText s settings (NormalSpace:l) = (spaceGlueBox settings s 1.0) ++ ripText s settings l
+ripText s settings (BiggerSpace:l) = (spaceGlueBox settings s 2.0) ++ ripText s settings l 
+ripText s settings (BreakingHyphen:l) = ripText s settings l 
+ripText s settings (NormalChar c:l) = 
+  let f = (textFont . textStyle $ s) 
+      g = charGlyph f c
+  in
+  createGlyph s g (glyphWidth f g) :ripText s settings l
+             
+
 
 -- | split a line into boxes and add hyphen where needed
-splitText :: Style s => BRState -> s -> PDFString -> [Letter s]
-splitText settings f t  = wordToLetters t
-  where
-     wordToLetters = createLetterBoxes settings f . ripText (textFont . textStyle $ f)
+splitText :: Style s => BRState -> s -> T.Text -> [Letter s]
+splitText settings f t  = 
+   let w = writingSystem settings
+       special = mapToSpecialGlyphs w t
+   in 
+   ripText f settings special
      
 -- | Create an hyphen penalty
 hyphenPenalty :: BRState

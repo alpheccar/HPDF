@@ -27,6 +27,7 @@ module Graphics.PDF.Resources(
  , PDFUncoloredPattern
  , AnyPdfPattern
  , PDFColorSpace(..)
+ , FontSize
  ) where
      
 import Graphics.PDF.LowLevel.Types
