@@ -37,9 +37,8 @@ data-files:
   Core14_AFMs/Helvetica-Bold.afm
   Core14_AFMs/Symbol.afm
   Core14_AFMs/ZapfDingbats.afm
-  Encodings/stdenc_unicode.txt
-  Encodings/symbol.txt
-  Encodings/zdingbats.txt
+  Encodings/glyphlist.txt
+  Encodings/zapfdingbats.txt
   Test/logo.jpg
 
 source-repository head
@@ -134,3 +133,5 @@ library
      Graphics.PDF.LowLevel.Serializer
      Graphics.PDF.Typesetting.StandardStyle
      Graphics.PDF.Fonts.AFMParser
+     Graphics.PDF.Fonts.Encoding
+

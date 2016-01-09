@@ -45,10 +45,11 @@ data FontStructure = FS { baseFont :: String
                         , kern :: M.Map GlyphPair GlyphSize 
                         , hyphen :: Maybe GlyphCode 
                         , space :: !GlyphCode
+                        , encoding :: M.Map Char GlyphCode
                         }
 
 emptyFontStructure :: FontStructure
-emptyFontStructure = FS "" 0 0 M.empty M.empty Nothing 0
+emptyFontStructure = FS "" 0 0 M.empty M.empty Nothing 0 M.empty
 
 class IsFont f where
     {-

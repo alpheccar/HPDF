@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveFunctor #-}
 ---------------------------------------------------------
@@ -28,6 +27,7 @@ import qualified Data.Map.Strict as M
 import Graphics.PDF.Fonts.Font
 import Graphics.PDF.Fonts.AFMParser 
 import System.FilePath 
+import Graphics.PDF.Fonts.Encoding
 
 data StdFont = StdFont FontStructure
 
@@ -72,24 +72,20 @@ instance PdfResourceObject FontName where
                            , (PDFName "Encoding",AnyPdfObject . PDFName $ "WinAnsiEncoding")]
 
 
-
-_charGlyph :: f -> Char  -> GlyphCode 
-_charGlyph _ = fromIntegral . ord
-
-
 instance PdfResourceObject StdFont where
    toRsrc (StdFont f) =  AnyPdfObject . PDFDictionary . M.fromList $
                            [(PDFName "Type",AnyPdfObject . PDFName $ "Font")
                            , (PDFName "Subtype",AnyPdfObject . PDFName $ "Type1")
                            , (PDFName "BaseFont",AnyPdfObject . PDFName $ baseFont f)
-                           , (PDFName "Encoding",AnyPdfObject . PDFName $ "WinAnsiEncoding")]
+                           --, (PDFName "Encoding",AnyPdfObject . PDFName $ "WinAnsiEncoding")
+                           ]
 
 instance IsFont StdFont where 
   getDescent (StdFont fs) s = trueSize s $ descent fs 
   getHeight (StdFont fs) s = trueSize s $ height fs 
   getKern (StdFont fs) s a b = trueSize s $ M.findWithDefault 0 (GlyphPair a b) (kern fs)
   glyphWidth (StdFont fs) s a = trueSize s  $ M.findWithDefault 0 a (width fs)
-  charGlyph = _charGlyph
+  charGlyph (StdFont fs) c = M.findWithDefault 0 c (encoding fs)
   name (StdFont fs) = baseFont fs 
   hyphenGlyph (StdFont fs) = hyphen fs 
   spaceGlyph (StdFont fs) = space fs
@@ -97,10 +93,14 @@ instance IsFont StdFont where
 mkStdFont :: FontName -> IO (Maybe AnyFont)
 mkStdFont f = do
   let path = "Core14_AFMs" </>  show f <.> "afm" 
-  maybeFs <- getFont path
+  theEncoding <- case f of  
+                    ZapfDingbats -> getEncoding ZapfDingbatsEncoding  
+                    _ -> getEncoding AdobeStandardEncoding
+  maybeFs <- getFont path theEncoding
   case maybeFs of 
     Just theFont -> do
-      let f' = theFont {baseFont = show f}
+      let f' = theFont { baseFont = show f
+                       }
       return . Just . AnyFont . StdFont $ f'
     Nothing -> return Nothing
 

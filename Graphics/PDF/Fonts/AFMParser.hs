@@ -28,6 +28,7 @@ import qualified Data.Map.Strict as M
 import Graphics.PDF.Fonts.Font(FontStructure(..),emptyFontStructure,FontSize,GlyphSize,GlyphPair(..))
 import Paths_HPDF
 import Graphics.PDF.LowLevel.Types
+import Graphics.PDF.Fonts.Encoding(PostscriptName)
 
 capitalize :: String -> String
 capitalize [] = []
@@ -215,34 +216,41 @@ getKernData = do
             }
                             
 afm :: Parser AFMFont
-afm = do { comment "StartFontMetrics"
-         ; comments
-         ; fontName <- getString "FontName"
-         ; fullName <- getName "FullName"
-         ; familyName <- getString "FamilyName"
-         ; weight <- getWeigth "Weight"
-         ; italicAngle <- getFloat "ItalicAngle"
-         ; isFixedPitch <- getBool "IsFixedPitch"
-         ; characterSet <- getCharacterSet "CharacterSet"
-         ; bbox <- getArray "FontBBox"
-         ; underlinePosition <- getInt "UnderlinePosition"
-         ; underlineThickness <- getInt "UnderlineThickness"
-         ; comment "Version"
-         ; comment "Notice"
-         ; encodingScheme <- getEncoding "EncodingScheme"
-         ; capHeight <- option 0 $ getInt "CapHeight"
-         ; xHeight <- option 0 $ getInt "XHeight"
-         ; ascender <- option 0 $ getInt "Ascender"
-         ; descender <- option 0 $ getInt "Descender" 
-         ; stdHW <- getInt "StdHW"
-         ; stdVW <- getInt "StdVW"
-         ; startCharMetrics <- getInt "StartCharMetrics"
-         ; charMetrics <- many1 charMetric
-         ; comment "EndCharMetrics"
-         ; kerns <- option Nothing getKernData
-         ; comment "EndFontMetrics"
-         ; return $ AFMFont (filter isEncoded charMetrics) underlinePosition underlineThickness ascender descender kerns
-         }
+afm = 
+  do  
+    comment "StartFontMetrics"
+    comments
+    fontName <- getString "FontName"
+    fullName <- getName "FullName"
+    familyName <- getString "FamilyName"
+    weight <- getWeigth "Weight"
+    italicAngle <- getFloat "ItalicAngle"
+    isFixedPitch <- getBool "IsFixedPitch"
+    characterSet <- getCharacterSet "CharacterSet"
+    [xmin,ymin,xmax,ymax] <- getArray "FontBBox"
+    underlinePosition <- getInt "UnderlinePosition"
+    underlineThickness <- getInt "UnderlineThickness"
+    comment "Version"
+    comment "Notice"
+    encodingScheme <- getEncoding "EncodingScheme"
+    capHeight <- option 0 $ getInt "CapHeight"
+    xHeight <- option 0 $ getInt "XHeight"
+    ascender <- option 0 $ getInt "Ascender"
+    descender <- option 0 $ getInt "Descender" 
+    stdHW <- getInt "StdHW"
+    stdVW <- getInt "StdVW"
+    startCharMetrics <- getInt "StartCharMetrics"
+    charMetrics <- many1 charMetric
+    comment "EndCharMetrics"
+    kerns <- option Nothing getKernData
+    comment "EndFontMetrics"
+    if ascender == 0 
+    then
+       let h = floor (ymax - ymin) in
+       return $ AFMFont (filter isEncoded charMetrics) underlinePosition underlineThickness h 0 kerns
+    else
+       return $ AFMFont (filter isEncoded charMetrics) underlinePosition underlineThickness ascender descender kerns
+         
 
 
 addMetric :: Metric -> FontStructure -> FontStructure 
@@ -263,8 +271,8 @@ addKern d (KX sa sb c) fs =
     (Just ca, Just cb) -> fs {kern = M.insert (GlyphPair ca cb) (fromIntegral c) (kern fs)}
     _ -> fs
 
-fontToStructure :: AFMFont -> FontStructure 
-fontToStructure afm =
+fontToStructure :: AFMFont -> M.Map PostscriptName Char -> FontStructure 
+fontToStructure afm encoding =
   let h = (ascent afm - afmDescent afm) 
       fs = emptyFontStructure { descent = fromIntegral $ - (afmDescent afm)
                               , height = fromIntegral $ h 
@@ -272,10 +280,18 @@ fontToStructure afm =
       addName m d = M.insert (name m) (fromIntegral $ charCode m) d 
       nameToGlyph = foldr addName M.empty (metrics afm)
       fs1 = foldr addMetric fs (metrics afm)
+      addEncodingMapping (name,glyphcode) d = 
+         let unicodeM = M.lookup name encoding 
+         in 
+         case unicodeM of 
+          Nothing -> d 
+          Just code -> M.insert code glyphcode d 
+      mapping = foldr addEncodingMapping M.empty (M.toList nameToGlyph)
+      fs2 = fs1 { encoding = mapping}
   in
   case kernData afm of
-    Nothing -> fs1
-    Just k -> foldr (addKern nameToGlyph) fs1 k
+    Nothing -> fs2
+    Just k -> foldr (addKern nameToGlyph) fs2 k
 
               
 parseFont :: String -> IO (Maybe AFMFont)
@@ -286,10 +302,10 @@ parseFont s = do
       Left e -> error (show e)
       Right r -> return $ Just r
 
-getFont :: String -> IO (Maybe FontStructure)
-getFont s = do 
+getFont :: String -> M.Map PostscriptName Char  -> IO (Maybe FontStructure)
+getFont s encoding = do 
   result <- parseFont s 
   case result of 
     Nothing -> return Nothing 
-    Just r -> return (Just $ fontToStructure r)
+    Just r -> return (Just $ fontToStructure r encoding)
 

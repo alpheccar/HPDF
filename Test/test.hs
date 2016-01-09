@@ -130,7 +130,7 @@ testAnnotation timesRoman p = do
         newAnnotation (TextAnnotation ("Key annotation éàü") [100,100,130,130] Key)
  
 textTest :: AnyFont -> Draw ()
-textTest timesRoman = do
+textTest timesRoman  = do
     strokeColor red
     fillColor blue
     fontDebug (PDFFont timesRoman 48) ("This is a \\test (éèçàù)!")
@@ -588,9 +588,19 @@ textBoxes timesRoman = do
     strokeColor red
     stroke r
     return ()
-                                       
-testAll :: AnyFont -> AnyFont -> AnyFont -> JpegFile -> PDF ()
-testAll timesRoman timesBold helveticaBold jpg = do
+                
+testSymbol :: AnyFont -> AnyFont -> Draw()
+testSymbol symbol zapf = do 
+  displayFormattedText (Rectangle (10 :+ 0) ((10+100) :+ 300)) (NormalParagraph) (Font (PDFFont symbol 32) black black) $ do
+    paragraph $ do
+      txt $ "♣︎♠︎♥︎♦︎"
+    paragraph $ do
+      setStyle (Font (PDFFont zapf 32) black black)
+      txt $ "✺✹✸❏❍✂︎✈︎"
+
+
+testAll :: AnyFont -> AnyFont -> AnyFont -> AnyFont -> AnyFont -> JpegFile -> PDF ()
+testAll timesRoman timesBold helveticaBold symbol zapf jpg = do
     page1 <- addPage Nothing
     newSection  "Typesetting" Nothing Nothing $ do
      newSection "Normal text" Nothing Nothing $ do
@@ -663,15 +673,21 @@ testAll timesRoman timesBold helveticaBold jpg = do
     page11 <- addPage Nothing
     newSection  "Text encoding" Nothing Nothing $ do
       drawWithPage page11 $ do
-        textTest timesRoman 
+        textTest timesRoman
+
+    page12 <- addPage Nothing
+    newSection  "Text encoding" Nothing Nothing $ do
+      drawWithPage page12 $ do
+        testSymbol symbol zapf
+    
     newSection  "Fun" Nothing Nothing $ do
         penrose
-    page12 <- addPage Nothing
-    newSection  "Text box" Nothing Nothing $ do
-      drawWithPage page12 $ do
-        textBoxes timesRoman
     page13 <- addPage Nothing
-    rawImage page13
+    newSection  "Text box" Nothing Nothing $ do
+      drawWithPage page13 $ do
+        textBoxes timesRoman
+    page14 <- addPage Nothing
+    rawImage page14
     
         
 main :: IO()
@@ -680,10 +696,12 @@ main = do
     Just timesRoman <- mkStdFont Times_Roman 
     Just timesBold <- mkStdFont Times_Bold
     Just helveticaBold <- mkStdFont Helvetica_Bold
+    Just symbol <- mkStdFont Symbol 
+    Just zapf <- mkStdFont ZapfDingbats
 
     logoPath <- getDataFileName $ "Test" </> "logo.jpg"
     Right jpg <- readJpegFile logoPath
     runPdf "demo.pdf" (standardDocInfo { author= "alpheccar éèçàü", compressed = False}) rect $ do
-        testAll timesRoman timesBold helveticaBold jpg
+        testAll timesRoman timesBold helveticaBold symbol zapf jpg
     --print $ charWidth (PDFFont Times_Roman 1) '('
      
