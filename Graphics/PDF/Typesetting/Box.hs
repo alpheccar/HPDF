@@ -31,7 +31,7 @@ import Graphics.PDF.Draw
 import Graphics.PDF.Text
 import Graphics.PDF.Shapes
 import Graphics.PDF.Coordinates
-import Graphics.PDF.Font
+import Graphics.PDF.Fonts.Font
 
 -- | Make a drawing box. A box object containing a Draw value
 mkDrawBox :: Draw () -> DrawBox
@@ -110,8 +110,12 @@ class ComparableStyle a => Style a where
     -- > styleDescent = getDescent . textFont . textStyle
     --
     styleDescent :: a -> PDFFloat
-    styleHeight = getHeight . textFont . textStyle 
-    styleDescent = getDescent . textFont . textStyle 
+    styleHeight a = 
+      let PDFFont f s = textFont . textStyle $ a in
+      getHeight f s
+    styleDescent a =       
+      let PDFFont f s = textFont . textStyle $ a in
+      getDescent f s
 
 -- | A box is an object with dimensions and used in the typesetting process
 class Box a where

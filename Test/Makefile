@@ -1,11 +1,11 @@
 debug:
-	ghc -o test -O -package-db ../dist/package.conf.inplace --make test.hs
+	ghc -o test -DDEBUG -O -package-db ../dist/package.conf.inplace --make test.hs
 
 onepage:
-	ghc -o test -O -package-db ../dist/package.conf.inplace --make onepage.hs
+	ghc -o test -DDEBUG -O -package-db ../dist/package.conf.inplace --make onepage.hs
 
 profile:
-	ghc -o test -prof -fprof-auto -rtsopts -O -package-db ../dist/package.conf.inplace --make test.hs
+	ghc -o test -DDEBUG -prof -fprof-auto -rtsopts -O -package-db ../dist/package.conf.inplace --make test.hs
 	
 runprof:
 	./test +RTS -p -hy

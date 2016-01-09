@@ -24,6 +24,26 @@ extra-source-files:
   NEWS.txt
   TODO.txt
   changelog
+data-files:
+  Core14_AFMs/Courier-Bold.afm
+  Core14_AFMs/Helvetica-BoldOblique.afm
+  Core14_AFMs/Times-Bold.afm
+  Core14_AFMs/Courier-BoldOblique.afm
+  Core14_AFMs/Helvetica-Oblique.afm 
+  Core14_AFMs/Times-BoldItalic.afm
+  Core14_AFMs/Courier-Oblique.afm
+  Core14_AFMs/Helvetica.afm
+  Core14_AFMs/Times-Italic.afm
+  Core14_AFMs/Courier.afm
+  Core14_AFMs/MustRead.html 
+  Core14_AFMs/Times-Roman.afm
+  Core14_AFMs/Helvetica-Bold.afm
+  Core14_AFMs/Symbol.afm
+  Core14_AFMs/ZapfDingbats.afm
+  Encodings/stdenc_unicode.txt
+  Encodings/symbol.txt
+  Encodings/zdingbats.txt
+  Test/logo.jpg
 
 source-repository head
   type:     git
@@ -38,6 +58,20 @@ Test-Suite HPDF-Tests
                      HPDF
   Default-language:  Haskell2010
   
+Executable HPDF-Demo
+  Main-is:           test.hs
+  hs-source-dirs:    Test
+  Build-depends:     base >= 4, 
+                     HPDF,
+                     random >= 1.0, 
+                     text >= 1.2.0,
+                     network-uri >= 2.6.0.3,
+                     vector >=0.10
+  Default-language:  Haskell2010
+  Other-Modules:
+    Paths_HPDF
+    Penrose
+
 library
   build-depends: 
       base >= 4 && < 5, 
@@ -57,6 +91,8 @@ library
 
   ghc-options: -Wall -fno-warn-tabs -funbox-strict-fields  -O2
 
+
+
   C-Sources:  
      c/metrics.c
      c/conversion.c
@@ -71,7 +107,8 @@ library
      Graphics.PDF.Document
      Graphics.PDF.Shapes
      Graphics.PDF.Text
-     Graphics.PDF.Font
+     Graphics.PDF.Fonts.Font
+     Graphics.PDF.Fonts.StandardFont
      Graphics.PDF.Typesetting.WritingSystem
      Graphics.PDF.Navigation
      Graphics.PDF.Image
@@ -99,3 +136,4 @@ library
      Graphics.PDF.Typesetting.Layout
      Graphics.PDF.LowLevel.Serializer
      Graphics.PDF.Typesetting.StandardStyle
+     Paths_HPDF

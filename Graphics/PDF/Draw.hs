@@ -105,6 +105,7 @@ import Graphics.PDF.LowLevel.Serializer
 import Graphics.PDF.Resources
 import Graphics.PDF.Data.PDFTree(PDFTree)
 import qualified Data.Text as T
+import Graphics.PDF.Fonts.Font(PDFFont(..))
 
 data AnnotationStyle = AnnotationStyle !(Maybe Color)
 

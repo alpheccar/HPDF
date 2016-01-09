@@ -49,7 +49,7 @@ import qualified Data.Map as Map
 import Graphics.PDF.Text
 import Graphics.PDF.Typesetting.Box
 import Data.Maybe(fromJust)
-import Graphics.PDF.Font
+import Graphics.PDF.Fonts.Font hiding(fontSize)
 import Graphics.PDF.Typesetting.WritingSystem
 import qualified Data.Text as T(Text)
 --import Debug.Trace
@@ -477,11 +477,11 @@ analyzeBoxes settings pass fmaxw actives lastz z =
 -- | Create an hyphen box
 hyphenBox :: Style s => s -> Letter s
 hyphenBox s = 
-  let f = textFont . textStyle $ s
+  let PDFFont f fontSize = textFont . textStyle $ s
       maybeHyphen = hyphenGlyph f 
   in 
   case maybeHyphen of 
-  Just h -> AGlyph s h (glyphWidth f h)
+  Just h -> AGlyph s h (glyphWidth f fontSize h)
   Nothing -> Kern 0 Nothing
 
 -- Use a list of breakpoint and adjustement ratios to generate a list of lines. Bool means if the break was done on a flagged penalty (hyphen)
@@ -541,8 +541,8 @@ glueBox s w y z = Glue w y z s
 spaceWidth :: Style s => s -- ^ The style
            -> PDFFloat
 spaceWidth  s =  
-    let f = (textFont . textStyle $ s) 
-        ws = glyphWidth f (spaceGlyph f)
+    let PDFFont f fontSize = (textFont . textStyle $ s) 
+        ws = glyphWidth f fontSize (spaceGlyph f)
         h = scaleSpace . textStyle $ s
     in
       ws * h  
@@ -637,38 +637,38 @@ ripText :: Style s
         -> [Letter s] -- ^ List of chars and char width taking into account kerning
 ripText s settings [] = []
 ripText s settings (NormalChar ca:BreakingHyphen:NormalChar cb:l) = 
-    let f = (textFont . textStyle $ s) 
+    let PDFFont f fontSize = (textFont . textStyle $ s) 
         ga = charGlyph f ca 
         gb = charGlyph f cb
-        oldKerning = getKern f ga gb
-        la = createGlyph s ga ((glyphWidth f ga) + oldKerning)
-        lb = createGlyph s gb (glyphWidth f gb)
+        oldKerning = getKern f fontSize ga gb
+        la = createGlyph s ga ((glyphWidth f fontSize ga) + oldKerning)
+        lb = createGlyph s gb (glyphWidth f fontSize gb)
         maybeH = hyphenGlyph f
     in 
     case maybeH of 
     Nothing -> la:lb:ripText s settings l
     Just h -> 
-          let newKerning = getKern f ga h 
-              w = glyphWidth f h + newKerning - oldKerning
+          let newKerning = getKern f fontSize ga h
+              w = glyphWidth f fontSize h - oldKerning + newKerning
           in
           la:hyphenPenalty settings s w:lb:ripText s settings l
 ripText s settings (NormalChar ca:NormalChar cb:l) = 
-    let f = (textFont . textStyle $ s) 
+    let PDFFont f fontSize = (textFont . textStyle $ s) 
         ga = charGlyph f ca 
         gb = charGlyph f cb
-        k = getKern f ga gb
-        la = createGlyph s ga ((glyphWidth f ga) + k)
-        lb = createGlyph s gb (glyphWidth f gb)
+        k = getKern f fontSize ga gb
+        la = createGlyph s ga ((glyphWidth f fontSize ga) + k)
+        lb = createGlyph s gb (glyphWidth f fontSize gb)
     in 
     la:lb:ripText s settings l
 ripText s settings (NormalSpace:l) = (spaceGlueBox settings s 1.0) ++ ripText s settings l
 ripText s settings (BiggerSpace:l) = (spaceGlueBox settings s 2.0) ++ ripText s settings l 
 ripText s settings (BreakingHyphen:l) = ripText s settings l 
 ripText s settings (NormalChar c:l) = 
-  let f = (textFont . textStyle $ s) 
+  let PDFFont f fontSize = (textFont . textStyle $ s) 
       g = charGlyph f c
   in
-  createGlyph s g (glyphWidth f g) :ripText s settings l
+  createGlyph s g (glyphWidth f fontSize g) :ripText s settings l
              
 
 

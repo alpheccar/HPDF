@@ -52,30 +52,28 @@ import Data.Binary.Builder(Builder)
 import Graphics.PDF.LowLevel.Serializer
 import qualified Data.ByteString as S
 import qualified Data.Text as T
-import Data.Char
-import Graphics.PDF.Font
+import Graphics.PDF.Fonts.Font
+import Graphics.PDF.Fonts.StandardFont
 
 
-glyphStreamWidth :: IsFont f 
-                 => f 
+glyphStreamWidth :: PDFFont
                  -> PDFGlyph 
                  -> PDFFloat
-glyphStreamWidth f (PDFGlyph t) = 
- let w = foldl' (\a b -> a + glyphWidth f (fromIntegral b)) 0 . S.unpack $ t
+glyphStreamWidth (PDFFont f s) (PDFGlyph t) = 
+ let w = foldl' (\a b -> a + glyphWidth f s (fromIntegral b)) 0 . S.unpack $ t
  in
-  w + (foldl' (\a (x,y) -> a + getKern f x y) 0 $ [(GlyphCode ca,GlyphCode cb) | (ca,cb) <- S.zip t (S.tail t)])
+  w + (foldl' (\a (x,y) -> a + getKern f s x y) 0 $ [(GlyphCode ca,GlyphCode cb) | (ca,cb) <- S.zip t (S.tail t)])
 
-textWidth :: IsFont f => f -> T.Text -> PDFFloat
+textWidth :: PDFFont -> T.Text -> PDFFloat
 textWidth f t = glyphStreamWidth f . pdfGlyph f $ t
       
-pdfGlyph :: IsFont f 
-         => f 
+pdfGlyph :: PDFFont
          -> T.Text 
          -> PDFGlyph 
-pdfGlyph f t = PDFGlyph . S.pack . map (fromIntegral . charGlyph f) . T.unpack $ t 
+pdfGlyph (PDFFont f _) t = PDFGlyph . S.pack . map (fromIntegral . charGlyph f) . T.unpack $ t 
 
 
-type FontState = (Set.Set FontName)
+type FontState = (Set.Set AnyFont)
 
 data TextParameter = TextParameter { tc :: !PDFFloat
                                    , tw :: !PDFFloat
@@ -86,7 +84,7 @@ data TextParameter = TextParameter { tc :: !PDFFloat
                                    , currentFont :: PDFFont
                                    }
 defaultParameters :: TextParameter
-defaultParameters = TextParameter 0 0 100 0 0 (Set.empty) (PDFFont Times_Roman 12)
+defaultParameters = TextParameter 0 0 100 0 0 (Set.empty) (PDFFont (mkStdFont Times_Roman) 12)
 
      
 -- | The text monad 
@@ -121,7 +119,7 @@ setFont :: PDFFont -> PDFText ()
 setFont f@(PDFFont n size) = PDFText $ do
     lift (modifyStrict $ \s -> s {fontState = Set.insert n (fontState s), currentFont = f})
     tell . mconcat$ [ serialize "\n/" 
-                    , serialize (show n)
+                    , serialize (name n)
                     , serialize ' '
                     , toPDF size
                     , serialize " Tf"
@@ -140,7 +138,7 @@ drawText t = do
     return a
  where
    addFontRsrc f = modifyStrict $ \s ->
-       s { rsrc = addResource (PDFName "Font") (PDFName (show f)) (toRsrc (PDFFont f 0)) (rsrc s)}
+       s { rsrc = addResource (PDFName "Font") (PDFName (name f)) (toRsrc f) (rsrc s)}
    
 -- | Set position for the text beginning
 textStart :: PDFFloat
