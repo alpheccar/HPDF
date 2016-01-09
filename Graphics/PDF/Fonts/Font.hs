@@ -19,12 +19,16 @@ module Graphics.PDF.Fonts.Font(
     , FontSize 
     , PDFFont(..)
     , AnyFont(..)
+    , FontStructure(..)
+    , GlyphPair(..)
+    , emptyFontStructure
     , fontSize
     , trueSize
 ) where 
 
 import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.Resources
+import qualified Data.Map.Strict as M
 
 -- Fonts
 type FontSize = Int
@@ -32,6 +36,19 @@ type FontSize = Int
 
 newtype GlyphSize = GlyphSize Int deriving(Eq,Ord,Num,Integral,Enum,Real)
 
+data GlyphPair = GlyphPair !GlyphCode !GlyphCode deriving(Eq,Ord) 
+
+data FontStructure = FS { baseFont :: String
+                        , descent :: !GlyphSize 
+                        , height :: !GlyphSize 
+                        , width :: M.Map GlyphCode GlyphSize 
+                        , kern :: M.Map GlyphPair GlyphSize 
+                        , hyphen :: Maybe GlyphCode 
+                        , space :: !GlyphCode
+                        }
+
+emptyFontStructure :: FontStructure
+emptyFontStructure = FS "" 0 0 M.empty M.empty Nothing 0
 
 class IsFont f where
     {-
@@ -53,7 +70,6 @@ class IsFont f where
     -}
     hyphenGlyph :: f -> Maybe GlyphCode
     spaceGlyph :: f -> GlyphCode
-    glyphChar :: f -> GlyphCode -> Maybe Char
     charGlyph :: f -> Char  -> GlyphCode 
 
 data AnyFont = forall f. (IsFont f,PdfResourceObject f) => AnyFont f
@@ -75,7 +91,6 @@ instance IsFont AnyFont where
     -}
     hyphenGlyph (AnyFont f) = hyphenGlyph f
     spaceGlyph (AnyFont f) = spaceGlyph f
-    glyphChar (AnyFont f) = glyphChar f
     charGlyph (AnyFont f) = charGlyph f
 
 instance Eq AnyFont where 
@@ -94,6 +109,6 @@ instance Ord PDFFont where
 
 -- pixel size / 2048 gives factor 
 
-trueSize :: Int -> Int -> PDFFloat
-trueSize fs glyphSize = (fromIntegral (glyphSize*fs)) / 1000.0
+trueSize :: Int -> GlyphSize -> PDFFloat
+trueSize fs glyphSize = (fromIntegral glyphSize * fromIntegral fs) / 1000.0
 

@@ -35,6 +35,7 @@ import Graphics.PDF.Typesetting.Box
 import Control.Monad.Writer(tell)
 import Control.Monad(when)
 import Graphics.PDF.LowLevel.Serializer
+import Graphics.PDF.Fonts.Font(AnyFont)
 
 -- | Current word (created from letter) is converted to a PDFString
 saveCurrentword :: PDFGlyph -> PDFGlyph
@@ -146,6 +147,7 @@ instance Show (HBox s) where
    show (HGlue a _ _) = "(HGlue " ++ show a ++ ")"
    show (Text _ t _) = "(Text " ++ show t ++ ")"
    show (SomeHBox _ t _) = "(SomeHBox " ++ show t ++ ")"
+
 
 -- | Draw a line of words and glue using the word style
 drawTextLine :: (Style s) => s -> [HBox s] -> PDFFloat -> PDFFloat -> Draw ()
@@ -326,13 +328,14 @@ instance (Style s) => DisplayableBox (HBox s) where
          let de = boxDescent a
              he = boxHeight a
              y' = y - he + de
+             theFont = styleFont style
          -- In word mode we have to apply a special function to the word
          -- otherwise we apply a different function to the sentence
          if (isJust . wordStyle $ style)
              then
                  (fromJust . wordStyle $ style) (Rectangle (x :+ (y' - de)) ((x+w) :+ (y' - de + he))) DrawWord (drawText $ drawTheTextBox OneBlock style x y' (Just t))
              else 
-                 drawText $ drawTheTextBox OneBlock style x y' (Just t)
+                 drawText  $ drawTheTextBox OneBlock style x y' (Just t)
 
      strokeBox (SomeHBox _ a _) x y = strokeBox a x y
      strokeBox (HGlue _ _ _) _ _ = return ()

@@ -28,7 +28,7 @@ module Graphics.PDF.Resources(
  ) where
      
 import Graphics.PDF.LowLevel.Types
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 
 
 

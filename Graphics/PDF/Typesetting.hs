@@ -42,6 +42,7 @@ module Graphics.PDF.Typesetting(
   -- * Functions
   -- ** Text display
   , displayFormattedText
+  , styleFont
   -- ** Text construction operators
   , txt
   , kern

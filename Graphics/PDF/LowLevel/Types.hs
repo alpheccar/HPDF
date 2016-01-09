@@ -19,7 +19,7 @@
 -- #hide
 module Graphics.PDF.LowLevel.Types where
 
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Data.List(intersperse)
 import Data.Int
 import Control.Monad.State
@@ -285,7 +285,7 @@ instance PdfObject PDFDictionary where
                                                                     ]
                                                                        
           in 
-           M.foldWithKey convertItem mempty a
+           M.foldrWithKey convertItem mempty a
   
 instance PdfLengthInfo PDFDictionary where
 

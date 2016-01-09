@@ -26,9 +26,9 @@ import Network.URI
 import Data.Maybe(fromJust)
 import Graphics.PDF.Fonts.Font
 import Graphics.PDF.Fonts.StandardFont
-#ifndef DEBUG
+import System.FilePath 
+
 import Paths_HPDF
-#endif
 
 alpheccarURL = fromJust $ parseURI "http://www.alpheccar.org"
 
@@ -677,14 +677,11 @@ testAll timesRoman timesBold helveticaBold jpg = do
 main :: IO()
 main = do
     let rect = PDFRect 0 0 600 400
-        timesRoman = mkStdFont Times_Roman 
-        timesBold = mkStdFont Times_Bold
-        helveticaBold = mkStdFont Helvetica_Bold
-#ifdef DEBUG
-    let logoPath = "logo.jpg"
-#else
-    logoPath <- getDataFileName "logo.jpg"
-#endif
+    Just timesRoman <- mkStdFont Times_Roman 
+    Just timesBold <- mkStdFont Times_Bold
+    Just helveticaBold <- mkStdFont Helvetica_Bold
+
+    logoPath <- getDataFileName $ "Test" </> "logo.jpg"
     Right jpg <- readJpegFile logoPath
     runPdf "demo.pdf" (standardDocInfo { author= "alpheccar éèçàü", compressed = False}) rect $ do
         testAll timesRoman timesBold helveticaBold jpg

@@ -45,7 +45,7 @@ module Graphics.PDF.Typesetting.Breaking (
      
 import Graphics.PDF.LowLevel.Types
 import Data.List(minimumBy)  
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as M
 import Graphics.PDF.Text
 import Graphics.PDF.Typesetting.Box
 import Data.Maybe(fromJust)
@@ -344,7 +344,7 @@ isFeasibleBreakpoint _ _ = False
 
 -- Update a feasible breakpoint remembering only the best one
 type PossibleBreak = ActiveNodes -- Line, demerit and break node
-type ActiveNodes  = Map.Map (Int,Int,Int) BreakNode
+type ActiveNodes  = M.Map (Int,Int,Int) BreakNode
 
 updateBreak :: BreakNode
             -> BreakNode
@@ -365,12 +365,12 @@ updateWithNewRIfNoSolution :: Bool
 updateWithNewRIfNoSolution sndPass r z key newbreak newmap f =
         if isForcedBreak z
           then
-             f True r (Map.delete key newmap)
+             f True r (M.delete key newmap)
           else
              if r < -1 
-                then let m' = Map.delete key newmap 
+                then let m' = M.delete key newmap 
                      in
-                     if Map.null m' && sndPass then f True (-0.99) m' else (newbreak,m')
+                     if M.null m' && sndPass then f True (-0.99) m' else (newbreak,m')
                 else
                      f False r newmap   
                         
@@ -401,19 +401,19 @@ getNewActiveBreakpoints settings sndPass fmaxw actives z =
                             Just (d',f') -> 
                                       let  b' = createBreaknode (Just (p,line,f,b)) z in
                                       -- We keep only the best new break
-                                      (Map.insertWith updateBreak (position z,line+1,f') (b' {demerit = d',fitnessValue = f', ratio = r}) newbreak ,newmap)
+                                      (M.insertWith updateBreak (position z,line+1,f') (b' {demerit = d',fitnessValue = f', ratio = r}) newbreak ,newmap)
         in
-        let (breaks',actives') = Map.foldWithKey analyzeActive (Map.empty,actives) actives
-            dmin = minimum . map demerit . Map.elems $ breaks'
-            nbreaks = Map.filter (\x -> demerit x < dmin + (fitness_demerit settings)) breaks'
+        let (breaks',actives') = M.foldrWithKey analyzeActive (M.empty,actives) actives
+            dmin = minimum . map demerit . M.elems $ breaks'
+            nbreaks = M.filter (\x -> demerit x < dmin + (fitness_demerit settings)) breaks'
         in
-        if Map.null nbreaks
+        if M.null nbreaks
          then
            (breaks' , actives') 
          else
            (nbreaks , actives') 
     else
-       (Map.empty,actives )
+       (M.empty,actives )
           
 -- (position, line, fitness) -> (adjust ratio, break position)
 genNodeList :: (Int,Int,Int,BreakNode) -> [(PDFFloat,Int,Bool)]
@@ -424,18 +424,18 @@ genNodeList (p,_,_,b@(BreakNode _ _ _ _ f _ _ (Just _))) = (ratio b,p,f):genNode
 -- Analyze the boxes to compute breaks
 analyzeBoxes :: BRState -> Bool -> (Int -> PDFFloat) -> ActiveNodes -> ZList s -> ZList s -> [(PDFFloat,Int,Bool)]
 analyzeBoxes settings pass fmaxw actives lastz z = 
-    let getMinBreak b' = (\((xc,yc,zc),w) -> (xc,yc,zc,w)) . minimumBy (\(_,a) (_,b) -> compare (demerit a) (demerit b)) . Map.toList $ b'
+    let getMinBreak b' = (\((xc,yc,zc),w) -> (xc,yc,zc,w)) . minimumBy (\(_,a) (_,b) -> compare (demerit a) (demerit b)) . M.toList $ b'
         (breaks',actives') = getNewActiveBreakpoints settings pass fmaxw actives z 
-        newActives = Map.union (breaks') (actives')
+        newActives = M.union (breaks') (actives')
         getRightOrderNodeList = tail . reverse . genNodeList
         getKey (a,b,c,_) = (a,b,c)
         getNode (_,_,_,BreakNode a b c d e f r _) = BreakNode a b c d e f r Nothing
     in
     --  If forced breakpoint or no breakpoint found
-    if Map.null actives'
+    if M.null actives'
         then
             -- If no breakpoint found
-            if Map.null breaks'
+            if M.null breaks'
                 then
                     -- Second pass analysis
                     if not pass
@@ -453,10 +453,10 @@ analyzeBoxes settings pass fmaxw actives lastz z =
                         someNewBreaks
                       else
                         let z' = moveRight z in
-                        someNewBreaks ++ analyzeBoxes settings pass fmaxw (Map.insert (getKey minBreak) (getNode minBreak) Map.empty) z' z'
+                        someNewBreaks ++ analyzeBoxes settings pass fmaxw (M.insert (getKey minBreak) (getNode minBreak) M.empty) z' z'
         -- Normal feasible breakpoint
         else
-            if Map.null breaks'
+            if M.null breaks'
              then
                  if theEnd z
                     then  
@@ -516,7 +516,7 @@ cutList j t c ((ra,ba,fa):l) =
 -- for horizontal lines of vertical boxes
 formatList :: Style s => BRState -> (Int -> PDFFloat) -> [Letter s] -> [(PDFFloat,[Letter s],[Letter s])]
 formatList settings maxw boxes = 
-    let active = Map.insert (0,0,1) (BreakNode 0 0 0 0 False 0 0.0 Nothing) Map.empty
+    let active = M.insert (0,0,1) (BreakNode 0 0 0 0 False 0 0.0 Nothing) M.empty
         z = createZList boxes
         theBreaks = analyzeBoxes settings False maxw active z z
     in

@@ -87,7 +87,7 @@ import Data.Maybe
 import Data.Monoid
 #endif
 
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.IntMap as IM
 import qualified Data.Binary.Builder as BU
 import qualified Data.ByteString.Lazy as B

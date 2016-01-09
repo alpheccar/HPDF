@@ -1,14 +1,33 @@
-module Main where
-    
-import Text.ParserCombinators.Parsec
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE ExistentialQuantification #-}
+---------------------------------------------------------
+-- |
+-- Copyright   : (c) 2006-2016, alpheccar.org
+-- License     : BSD-style
+--
+-- Maintainer  : misc@NOSPAMalpheccar.org
+-- Stability   : experimental
+-- Portability : portable
+--
+-- AFM Parser
+---------------------------------------------------------
+module Graphics.PDF.Fonts.AFMParser(
+    getFont
+    ) where 
+
+import Text.ParserCombinators.Parsec hiding(space)
 import Text.ParserCombinators.Parsec.Prim
-import Text.ParserCombinators.Parsec.Char
+import Text.ParserCombinators.Parsec.Char hiding(space)
 import Data.Char(toUpper)
 import System.Environment
 import Data.Maybe(isJust,fromJust,mapMaybe)
 import qualified Data.IntMap as IM
 import Data.List(intersperse)
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
+import Graphics.PDF.Fonts.Font(FontStructure(..),emptyFontStructure,FontSize,GlyphSize,GlyphPair(..))
+import Paths_HPDF
+import Graphics.PDF.LowLevel.Types
 
 capitalize :: String -> String
 capitalize [] = []
@@ -138,20 +157,20 @@ metricElem  = do char 'C'
                  return L
                  
 data Metric = Metric { charCode :: Int
-                     , width :: Int
+                     , metricWidth :: Int
                      , name :: String
                      , bounds :: [Double]
                      }
                      deriving(Eq,Show)
                      
-data Font = Font { metrics :: [Metric]
-                 , underlinePosition :: Int
-                 , underlineThickness :: Int
-                 , ascent :: Int
-                 , descent :: Int
-                 , kernData :: Maybe [KX]
-                 }
-                 deriving(Eq,Show)
+data AFMFont = AFMFont { metrics :: [Metric]
+                       , underlinePosition :: Int
+                       , underlineThickness :: Int
+                       , ascent :: Int
+                       , afmDescent :: Int
+                       , kernData :: Maybe [KX]
+                       }
+                       deriving(Eq,Show)
                         
 isEncoded :: Metric -> Bool
 isEncoded (Metric c _ _ _) = c /= (-1)                  
@@ -160,7 +179,7 @@ mkMetric :: [Elem] -> Metric
 mkMetric l = foldr addElem (Metric (-1) 0 "" []) l     
  where
      addElem  (C c) m = m {charCode=c}
-     addElem  (WX c) m = m {width=c}
+     addElem  (WX c) m = m {metricWidth=c}
      addElem  (N s) m = m {name=s}
      addElem  (B l) m = m {bounds=l}
      addElem  _ m = m         
@@ -195,7 +214,7 @@ getKernData = do
             ; return $ Just k
             }
                             
-afm :: Parser Font
+afm :: Parser AFMFont
 afm = do { comment "StartFontMetrics"
          ; comments
          ; fontName <- getString "FontName"
@@ -222,91 +241,55 @@ afm = do { comment "StartFontMetrics"
          ; comment "EndCharMetrics"
          ; kerns <- option Nothing getKernData
          ; comment "EndFontMetrics"
-         ; return $ Font (filter isEncoded charMetrics) underlinePosition underlineThickness ascender descender kerns
+         ; return $ AFMFont (filter isEncoded charMetrics) underlinePosition underlineThickness ascender descender kerns
          }
-     
-allFonts :: [String]                          
-allFonts = [ "Helvetica.afm"
-           , "Helvetica-Bold.afm"
-           , "Helvetica-Oblique.afm"
-           , "Helvetica-BoldOblique.afm"
-           , "Times-Roman.afm"
-           , "Times-Bold.afm"
-           , "Times-Italic.afm"
-           , "Times-BoldItalic.afm"
-           , "Courier.afm"
-           , "Courier-Bold.afm"
-           , "Courier-Oblique.afm"
-           , "Courier-BoldOblique.afm"
-           , "Symbol.afm"
-           , "ZapfDingbats.afm"
-           ]
-           
-createFontList :: Font -> [(Int,Int)]
-createFontList (Font m up ut asc desc k)  = zip codes (map getWidth [32..255])
- where
-     codes = [32..255]
-     getWidth c = IM.findWithDefault spaceWidth c chars
-     spaceWidth = IM.findWithDefault 0 32 chars
-     chars = IM.fromList . map zipMetric $ m
-     zipMetric m@(Metric c w _ _) = (c,w)
-         
-parseFont :: String -> IO (Maybe Font)
+
+
+addMetric :: Metric -> FontStructure -> FontStructure 
+addMetric m fs = 
+    let fs' = fs { width = M.insert (fromIntegral $ charCode m) (fromIntegral $ metricWidth m) (width fs)}
+    in 
+    case (name m) of 
+      "space" -> fs' {space = fromIntegral $ charCode m}
+      "hyphen" -> fs' {hyphen = Just (fromIntegral $ charCode m)}
+      _ -> fs'
+
+addKern :: M.Map String GlyphCode -> KX -> FontStructure -> FontStructure 
+addKern d (KX sa sb c) fs = 
+  let caM = M.lookup sa d 
+      cbM = M.lookup sb d
+  in 
+  case (caM,cbM) of
+    (Just ca, Just cb) -> fs {kern = M.insert (GlyphPair ca cb) (fromIntegral c) (kern fs)}
+    _ -> fs
+
+fontToStructure :: AFMFont -> FontStructure 
+fontToStructure afm =
+  let h = (ascent afm - afmDescent afm) 
+      fs = emptyFontStructure { descent = fromIntegral $ - (afmDescent afm)
+                              , height = fromIntegral $ h 
+                              }
+      addName m d = M.insert (name m) (fromIntegral $ charCode m) d 
+      nameToGlyph = foldr addName M.empty (metrics afm)
+      fs1 = foldr addMetric fs (metrics afm)
+  in
+  case kernData afm of
+    Nothing -> fs1
+    Just k -> foldr (addKern nameToGlyph) fs1 k
+
+              
+parseFont :: String -> IO (Maybe AFMFont)
 parseFont s = do
-    r <- parseFromFile afm $ "../Core14_AFMs/" ++ s
+    path <- getDataFileName s
+    r <- parseFromFile afm path
     case r of
       Left e -> error (show e)
       Right r -> return $ Just r
 
-fontData :: Font -> [String]
-fontData (Font _ up ut asc desc k) = [show up,show ut,show asc,show desc,maybe "0" (const "1") k]
+getFont :: String -> IO (Maybe FontStructure)
+getFont s = do 
+  result <- parseFont s 
+  case result of 
+    Nothing -> return Nothing 
+    Just r -> return (Just $ fontToStructure r)
 
-kernForFont :: (Int,Font) -> M.Map (Int,Int,Int) Int
-kernForFont (i,(Font m _ _ _ _ Nothing)) = M.empty
-kernForFont (i,(Font m _ _ _ _ (Just k))) = do
-    let names = M.fromList . map (\x -> (name x, charCode x)) $ m
-        k' = mapMaybe kernToList k
-        kernToList (KX na nb v) =
-            let ca = M.lookup na names
-                cb = M.lookup nb names in
-            case (ca,cb) of
-                (Just a,Just b) -> Just $ ((i,a,b),v)
-                (_,_) -> Nothing
-    M.fromList k'
-
-
-
-createKern :: [Font] -> IO ()
-createKern f = do
-    let allmaps = map kernForFont $ (zip [0..] f)
-        endkern = M.fromList $ [((i,j,0),0) | i <- [0..13],j <- [32..255]]
-        result = M.unions $ allmaps
-    putStrLn $ "-- #hide"
-    putStrLn $ "module Graphics.PDF.LowLevel.Kern(kerns) where"
-    putStrLn ""
-    putStrLn $ "import qualified Data.Map as M"
-    putStrLn $ "import Data.Word"
-    putStrLn $ "kerns :: M.Map (Int,Word8,Word8) Int"
-    putStrLn $ "kerns = M." ++ (show result)
-
-main :: IO ()
-main = do
-    r <- getArgs
-    maybeFonts <- mapM parseFont allFonts 
-    let fonts = map fromJust . filter isJust $ maybeFonts
-    if null r
-      then do
-        let carray = map createFontList fonts
-        putStrLn "#ifndef _METRICS_H_"
-        putStrLn "#define _METRICS_H_"
-        putStrLn "static const unsigned long gmetric[]={"
-        mapM_ putStr . intersperse "\n," . map (\(c,w) -> show w) . concat $ carray
-        putStrLn "};"
-        putStrLn "static const long fmetric[]={"
-        mapM_ putStr . intersperse "\n," . concatMap fontData $ fonts
-        putStrLn "};"
-        putStrLn "#endif"
-      else do
-        createKern fonts
-    
-    

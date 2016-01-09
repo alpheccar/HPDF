@@ -19,7 +19,7 @@ module Graphics.PDF.Action(
  ) where
      
 import Graphics.PDF.LowLevel.Types
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Network.URI 
 
 

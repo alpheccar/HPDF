@@ -51,7 +51,7 @@ import Graphics.PDF.Draw
 import Graphics.PDF.Pages
 import Control.Monad.State
 import qualified Data.IntMap as IM
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
 -- | No information for the document  

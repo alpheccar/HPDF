@@ -70,7 +70,7 @@ import Graphics.PDF.Pattern
 import Graphics.PDF.Navigation
 import Graphics.PDF.Text
 import qualified Data.IntMap as IM
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.ByteString.Lazy as B
 import Data.Int
 import Text.Printf(printf)

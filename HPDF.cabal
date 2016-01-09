@@ -12,10 +12,7 @@ tested-with: GHC==7.8.4,GHC==7.10.2
 homepage: http://www.alpheccar.org
 description: A PDF library with support for several pages, page transitions, outlines, annotations, compression, colors, shapes, patterns, jpegs, fonts, typesetting ... Have a look at the "Graphics.PDF.Documentation" module to see how to use it. Or, download the package and look at the test.hs file in the Test folder. That file is giving an example of each feature.
 extra-source-files:
-  c/ctext.h
-  c/metrics.h
   c/conversion.h
-  Test/AFMParser.hs
   Test/logo.jpg
   Test/Makefile
   Test/Penrose.hs
@@ -66,7 +63,9 @@ Executable HPDF-Demo
                      random >= 1.0, 
                      text >= 1.2.0,
                      network-uri >= 2.6.0.3,
-                     vector >=0.10
+                     vector >=0.10,
+                     filepath >= 1.4.0
+
   Default-language:  Haskell2010
   Other-Modules:
     Paths_HPDF
@@ -86,19 +85,17 @@ library
       errors,
       base64-bytestring >= 0.1,
       text >= 1.2.0,
-      network-uri >= 2.6.0.3
+      network-uri >= 2.6.0.3,
+      parsec >=3.1.9,
+      filepath >= 1.4.0
   Default-language:  Haskell2010
 
   ghc-options: -Wall -fno-warn-tabs -funbox-strict-fields  -O2
 
-
-
   C-Sources:  
-     c/metrics.c
      c/conversion.c
   Include-Dirs: c
   Install-Includes: 
-     ctext.h
      conversion.h
   exposed-Modules: 
      Graphics.PDF
@@ -119,6 +116,7 @@ library
      Graphics.PDF.Typesetting
      Graphics.PDF.Hyphenate
      Graphics.PDF.Documentation
+     Paths_HPDF
   Other-Modules:
      Graphics.PDF.LowLevel.Types
      Graphics.PDF.Data.PDFTree
@@ -128,7 +126,6 @@ library
      Graphics.PDF.Draw
      Graphics.PDF.Hyphenate.English
      Graphics.PDF.Hyphenate.LowLevel
-     Graphics.PDF.LowLevel.Kern
      Graphics.PDF.Typesetting.Breaking
      Graphics.PDF.Typesetting.Horizontal
      Graphics.PDF.Typesetting.Vertical
@@ -136,4 +133,4 @@ library
      Graphics.PDF.Typesetting.Layout
      Graphics.PDF.LowLevel.Serializer
      Graphics.PDF.Typesetting.StandardStyle
-     Paths_HPDF
+     Graphics.PDF.Fonts.AFMParser

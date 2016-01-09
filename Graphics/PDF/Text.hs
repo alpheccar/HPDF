@@ -81,10 +81,10 @@ data TextParameter = TextParameter { tc :: !PDFFloat
                                    , tl :: !PDFFloat
                                    , ts :: !PDFFloat
                                    , fontState :: FontState
-                                   , currentFont :: PDFFont
+                                   , currentFont :: Maybe PDFFont
                                    }
-defaultParameters :: TextParameter
-defaultParameters = TextParameter 0 0 100 0 0 (Set.empty) (PDFFont (mkStdFont Times_Roman) 12)
+defaultParameters ::  TextParameter
+defaultParameters = TextParameter 0 0 100 0 0 (Set.empty) Nothing
 
      
 -- | The text monad 
@@ -117,7 +117,7 @@ data TextMode = FillText
 -- | Select a font to use
 setFont :: PDFFont -> PDFText ()
 setFont f@(PDFFont n size) = PDFText $ do
-    lift (modifyStrict $ \s -> s {fontState = Set.insert n (fontState s), currentFont = f})
+    lift (modifyStrict $ \s -> s {fontState = Set.insert n (fontState s), currentFont = Just f})
     tell . mconcat$ [ serialize "\n/" 
                     , serialize (name n)
                     , serialize ' '
@@ -137,8 +137,8 @@ drawText t = do
     tell . serialize $ "\nET"
     return a
  where
-   addFontRsrc f = modifyStrict $ \s ->
-       s { rsrc = addResource (PDFName "Font") (PDFName (name f)) (toRsrc f) (rsrc s)}
+   addFontRsrc font = modifyStrict $ \s ->
+       s { rsrc = addResource (PDFName "Font") (PDFName (name font)) (toRsrc font) (rsrc s)}
    
 -- | Set position for the text beginning
 textStart :: PDFFloat
@@ -169,8 +169,11 @@ displayText :: T.Text
             -> PDFText ()
 displayText t = do
     f <- gets currentFont
-    let g = pdfGlyph f t
-    displayGlyphs g
+    case f of 
+      Nothing -> return ()
+      Just aFont -> do
+         let g = pdfGlyph aFont t
+         displayGlyphs g
 
 
 --    f <- gets currentFont

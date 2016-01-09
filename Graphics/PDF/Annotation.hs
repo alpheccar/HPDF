@@ -24,7 +24,7 @@ module Graphics.PDF.Annotation(
 
 import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.Draw
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Graphics.PDF.Action
 import Graphics.PDF.Pages
 import Control.Monad.State(gets)

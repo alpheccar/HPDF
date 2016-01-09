@@ -24,6 +24,7 @@ module Graphics.PDF.Typesetting.Box (
   , DrawBox
   , ComparableStyle(..)
   , mkDrawBox
+  , styleFont
  ) where
      
 import Graphics.PDF.LowLevel.Types
@@ -116,6 +117,14 @@ class ComparableStyle a => Style a where
     styleDescent a =       
       let PDFFont f s = textFont . textStyle $ a in
       getDescent f s
+
+
+styleFont :: Style s => s -> AnyFont 
+styleFont style = 
+  let PDFFont n _ = textFont . textStyle $ style 
+  in 
+  n
+
 
 -- | A box is an object with dimensions and used in the typesetting process
 class Box a where

@@ -13,24 +13,11 @@ runprof:
 demo:
 	ghc -o test -O2 --make test.hs
 	
-buildafm:
-	ghc -o afm --make AFMParser.hs
-	
-metrics:
-	@./afm Courier-Bold.afm
-
 clean:
 	rm -f test
-	rm -f afm
 	rm -f *.o
 	rm -f *.hi
 	rm -f *.exe
 	rm -f test.prof
 	rm -f demo.pdf
-	rm -rf bin
-	rm -rf interfaces
-	rm -rf c
-	mkdir bin
-	mkdir c
-	mkdir interfaces
 	

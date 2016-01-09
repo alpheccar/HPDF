@@ -20,7 +20,7 @@ module Graphics.PDF.Data.Trie(
  where
     
 import Prelude hiding(lookup)
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 
 data MapString v = EmptyTrie

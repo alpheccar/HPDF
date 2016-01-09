@@ -32,7 +32,7 @@ module Graphics.PDF.Image(
  ) where
      
 import Graphics.PDF.LowLevel.Types
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Graphics.PDF.Draw
 import Graphics.PDF.Resources
 import Graphics.PDF.Pages
