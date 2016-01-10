@@ -39,6 +39,7 @@ data-files:
   Core14_AFMs/ZapfDingbats.afm
   Encodings/glyphlist.txt
   Encodings/zapfdingbats.txt
+  Encodings/pdfencodings.txt
   Test/logo.jpg
 
 source-repository head

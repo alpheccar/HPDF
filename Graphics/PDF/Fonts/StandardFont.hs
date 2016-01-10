@@ -64,21 +64,16 @@ instance Show FontName where
     show Symbol = "Symbol"
     show ZapfDingbats = "ZapfDingbats"
 
-instance PdfResourceObject FontName where
-   toRsrc f =  AnyPdfObject . PDFDictionary . M.fromList $
-                           [(PDFName "Type",AnyPdfObject . PDFName $ "Font")
-                           , (PDFName "Subtype",AnyPdfObject . PDFName $ "Type1")
-                           , (PDFName "BaseFont",AnyPdfObject . PDFName $ show f)
-                           , (PDFName "Encoding",AnyPdfObject . PDFName $ "WinAnsiEncoding")]
-
 
 instance PdfResourceObject StdFont where
    toRsrc (StdFont f) =  AnyPdfObject . PDFDictionary . M.fromList $
                            [(PDFName "Type",AnyPdfObject . PDFName $ "Font")
                            , (PDFName "Subtype",AnyPdfObject . PDFName $ "Type1")
                            , (PDFName "BaseFont",AnyPdfObject . PDFName $ baseFont f)
-                           --, (PDFName "Encoding",AnyPdfObject . PDFName $ "WinAnsiEncoding")
-                           ]
+                           ] ++ encoding
+          where encoding | baseFont f == show Symbol = [] 
+                         | baseFont f == show ZapfDingbats = []
+                         | otherwise = [(PDFName "Encoding",AnyPdfObject . PDFName $ "MacRomanEncoding")]
 
 instance IsFont StdFont where 
   getDescent (StdFont fs) s = trueSize s $ descent fs 
@@ -96,7 +91,11 @@ mkStdFont f = do
   theEncoding <- case f of  
                     ZapfDingbats -> getEncoding ZapfDingbatsEncoding  
                     _ -> getEncoding AdobeStandardEncoding
-  maybeFs <- getFont path theEncoding
+  theMacEncoding <- case f of 
+                     ZapfDingbats -> return Nothing
+                     Symbol -> return Nothing 
+                     _ -> parseMacEncoding >>= return . Just
+  maybeFs <- getFont path theEncoding theMacEncoding
   case maybeFs of 
     Just theFont -> do
       let f' = theFont { baseFont = show f

@@ -271,17 +271,24 @@ addKern d (KX sa sb c) fs =
     (Just ca, Just cb) -> fs {kern = M.insert (GlyphPair ca cb) (fromIntegral c) (kern fs)}
     _ -> fs
 
-fontToStructure :: AFMFont -> M.Map PostscriptName Char -> FontStructure 
-fontToStructure afm encoding =
+-- If the maybe argument is not nothing, we use the specific encoding for
+-- the postscript names.
+-- Otherwise we use the encoding we found in the afm file.
+-- It is used to force MacRomanEncoding on not symbolic default fonts.
+fontToStructure :: AFMFont 
+                -> M.Map PostscriptName Char 
+                -> Maybe (M.Map PostscriptName GlyphCode)
+                -> FontStructure 
+fontToStructure afm encoding maybeMapNameToGlyph =
   let h = (ascent afm - afmDescent afm) 
       fs = emptyFontStructure { descent = fromIntegral $ - (afmDescent afm)
                               , height = fromIntegral $ h 
                               }
       addName m d = M.insert (name m) (fromIntegral $ charCode m) d 
-      nameToGlyph = foldr addName M.empty (metrics afm)
+      nameToGlyph = maybe (foldr addName M.empty (metrics afm)) id maybeMapNameToGlyph
       fs1 = foldr addMetric fs (metrics afm)
-      addEncodingMapping (name,glyphcode) d = 
-         let unicodeM = M.lookup name encoding 
+      addEncodingMapping (pname,glyphcode) d = 
+         let unicodeM = M.lookup pname encoding 
          in 
          case unicodeM of 
           Nothing -> d 
@@ -302,10 +309,13 @@ parseFont s = do
       Left e -> error (show e)
       Right r -> return $ Just r
 
-getFont :: String -> M.Map PostscriptName Char  -> IO (Maybe FontStructure)
-getFont s encoding = do 
+getFont :: String 
+        -> M.Map PostscriptName Char  -- ^ Glyph name to unicode
+        -> Maybe (M.Map PostscriptName GlyphCode)  -- ^ Glyph name to glyph code if not standard coding
+        -> IO (Maybe FontStructure)
+getFont s encoding nameToGlyph = do 
   result <- parseFont s 
   case result of 
     Nothing -> return Nothing 
-    Just r -> return (Just $ fontToStructure r encoding)
+    Just r -> return (Just $ fontToStructure r encoding nameToGlyph)
 
