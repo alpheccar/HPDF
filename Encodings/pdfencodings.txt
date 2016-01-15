@@ -17,7 +17,7 @@ Ecircumflex	-	346	312	312
 Edieresis	-	350	313	313
 Egrave	-	351	310	310
 Eth	-	-	320	320
-Euro (1)	-	-	200	240
+Euro	-	-	200	240
 F	106	106	106	106
 G	107	107	107	107
 H	110	110	110	110
@@ -60,7 +60,7 @@ Y	131	131	131	131
 Yacute	-	-	335	335
 Ydieresis	-	331	237	230
 Z	132	132	132	132
-Zcaron (2)	-	-	216	231
+Zcaron	-	-	216	231
 a	141	141	141	141
 aacute	-	207	341	341
 acircumflex	-	211	342	342
@@ -84,7 +84,7 @@ bracketleft	133	133	133	133
 bracketright	135	135	135	135
 breve	306	371	-	030
 brokenbar	-	-	246	246
-bullet (3)	267	245	225	200
+bullet	267	245	225	200
 c	143	143	143	143
 caron	317	377	-	031
 ccedilla	-	215	347	347
@@ -128,13 +128,13 @@ g	147	147	147	147
 germandbls	373	247	337	337
 grave	301	140	140	140
 greater	076	076	076	076
-guillemotleft (4)	253	307	253	253
-guillemotright (4)	273	310	273	273
+guillemotleft	253	307	253	253
+guillemotright	273	310	273	273
 guilsinglleft	254	334	213	210
 guilsinglright	255	335	233	211
 h	150	150	150	150
 hungarumlaut	315	375	-	034
-hyphen (5)	055	055	055	055
+hyphen	055	055	055	055
 i	151	151	151	151
 iacute	-	222	355	355
 icircumflex	-	224	356	356
@@ -201,7 +201,7 @@ semicolon	073	073	073	073
 seven	067	067	067	067
 six	066	066	066	066
 slash	057	057	057	057
-space (6)	040	040	040	040
+space	040	040	040	040
 sterling	243	243	243	243
 t	164	164	164	164
 thorn	-	-	376	376
@@ -226,5 +226,5 @@ yacute	-	-	375	375
 ydieresis	-	330	377	377
 yen	245	264	245	245
 z	172	172	172	172
-zcaron (2)	-	-	236	236
+zcaron	-	-	236	236
 zero	060	060	060	060

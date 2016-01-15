@@ -176,14 +176,15 @@ data MyParaStyles = Normal AnyFont
                   | RedRectStyle AnyFont
                   | BlueStyle AnyFont
                   
+-- It assumes that the SAME font is used.
 instance ComparableStyle MyParaStyles where
-  isSameStyleAs (Normal _) (Normal _) = True
-  isSameStyleAs (Bold _) (Bold _) = True
-  isSameStyleAs (Crazy _) (Crazy _) = True
-  isSameStyleAs (SuperCrazy _ _ _) (SuperCrazy _ _ _) = True
-  isSameStyleAs (DebugStyle _) (DebugStyle _) = True
-  isSameStyleAs (RedRectStyle _) (RedRectStyle _) = True
-  isSameStyleAs (BlueStyle _) (BlueStyle _) = True
+  isSameStyleAs (Normal fa) (Normal fb) = fa == fb
+  isSameStyleAs (Bold fa) (Bold fb) = fa == fb
+  isSameStyleAs (Crazy fa) (Crazy fb) = fa == fb
+  isSameStyleAs (SuperCrazy fa _ _) (SuperCrazy fb _ _) = fa == fb
+  isSameStyleAs (DebugStyle fa) (DebugStyle fb) = fa == fb
+  isSameStyleAs (RedRectStyle fa) (RedRectStyle fb) = fa == fb
+  isSameStyleAs (BlueStyle fa) (BlueStyle fb) = fa == fb
   isSameStyleAs _ _ = False
   
                   

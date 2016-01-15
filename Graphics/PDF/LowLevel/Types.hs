@@ -158,16 +158,29 @@ toPDFString :: T.Text -> PDFString
 toPDFString = PDFString . encodeUtf16BE
 
 toPDFGlyph :: S.ByteString -> PDFGlyph
-toPDFGlyph = PDFGlyph  -- . escapeString
+toPDFGlyph = PDFGlyph 
 
 toAsciiString :: String -> AsciiString 
 toAsciiString s = AsciiString (C.pack s)
 
-toHexaStream :: PDFString -> S.ByteString 
-toHexaStream (PDFString x) = 
+class HasHexaStream a where 
+  toHexaStream :: a -> S.ByteString 
+
+instance HasHexaStream S.ByteString where 
+    toHexaStream x  = 
+        let hexChar c = C.pack (printf "%02X" (ord c) :: String)
+        in
+        C.cons 'F' . C.cons 'E' . C.cons 'F' . C.cons 'F' . C.concatMap hexChar $ x
+
+instance HasHexaStream PDFString where 
+  toHexaStream (PDFString x) = toHexaStream x
+
+instance HasHexaStream PDFGlyph where 
+  toHexaStream (PDFGlyph x) = 
     let hexChar c = C.pack (printf "%02X" (ord c) :: String)
-    in
-    C.cons 'F' . C.cons 'E' . C.cons 'F' . C.cons 'F' . C.concatMap hexChar $ x
+        in
+        C.concatMap hexChar $ x
+
 
 newtype GlyphCode = GlyphCode Word8 deriving(Eq,Ord,Show,Integral,Bounded,Enum,Real,Num)
 
@@ -235,9 +248,10 @@ instance PdfObject PDFString where
 instance PdfLengthInfo PDFString where
 
 instance PdfObject PDFGlyph where
-  toPDF a = mconcat [ lparen
-                    , serialize . espacePDFGlyph $ a 
-                    , rparen
+  toPDF a = mconcat [ blt
+                    --, serialize . espacePDFGlyph $ a 
+                    , fromByteString $ toHexaStream a
+                    , bgt
                     ]
 
 instance PdfLengthInfo PDFGlyph where

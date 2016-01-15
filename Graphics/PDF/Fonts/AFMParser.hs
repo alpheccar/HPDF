@@ -247,15 +247,19 @@ afm =
     if ascender == 0 
     then
        let h = floor (ymax - ymin) in
-       return $ AFMFont (filter isEncoded charMetrics) underlinePosition underlineThickness h 0 kerns
+       return $ AFMFont charMetrics underlinePosition underlineThickness h 0 kerns
     else
-       return $ AFMFont (filter isEncoded charMetrics) underlinePosition underlineThickness ascender descender kerns
+       return $ AFMFont charMetrics underlinePosition underlineThickness ascender descender kerns
          
 
 
-addMetric :: Metric -> FontStructure -> FontStructure 
-addMetric m fs = 
-    let fs' = fs { width = M.insert (fromIntegral $ charCode m) (fromIntegral $ metricWidth m) (width fs)}
+addMetric :: M.Map PostscriptName GlyphCode -> Metric -> FontStructure -> FontStructure 
+addMetric nameToGlyph m fs = 
+    let c = M.lookup (name m) nameToGlyph
+        fs' = case c of 
+                Just glyphCode -> 
+                  fs { width = M.insert (fromIntegral glyphCode) (fromIntegral $ metricWidth m) (width fs)}
+                Nothing -> fs
     in 
     case (name m) of 
       "space" -> fs' {space = fromIntegral $ charCode m}
@@ -286,7 +290,7 @@ fontToStructure afm encoding maybeMapNameToGlyph =
                               }
       addName m d = M.insert (name m) (fromIntegral $ charCode m) d 
       nameToGlyph = maybe (foldr addName M.empty (metrics afm)) id maybeMapNameToGlyph
-      fs1 = foldr addMetric fs (metrics afm)
+      fs1 = foldr (addMetric nameToGlyph) fs (metrics afm)
       addEncodingMapping (pname,glyphcode) d = 
          let unicodeM = M.lookup pname encoding 
          in 
