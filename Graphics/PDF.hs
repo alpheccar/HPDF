@@ -54,6 +54,12 @@ module Graphics.PDF
   , module Graphics.PDF.Pattern
   -- ** Shading
   , module Graphics.PDF.Shading
+  -- ** Fonts
+  , module Graphics.PDF.Fonts.Font 
+  , module Graphics.PDF.Fonts.StandardFont
+  , module Graphics.PDF.Fonts.Type1
+  , readType1Font
+  , mkType1Font
   -- ** Typesetting
   , module Graphics.PDF.Typesetting
   , module Graphics.PDF.Hyphenate
@@ -91,6 +97,9 @@ import Data.Binary.Builder(Builder,fromLazyByteString, toLazyByteString)
 import Graphics.PDF.LowLevel.Serializer
 import Data.List(unfoldr)
 import qualified Data.Text as T
+import Graphics.PDF.Fonts.Font 
+import Graphics.PDF.Fonts.StandardFont
+import Graphics.PDF.Fonts.Type1
 
 -- | Create a new PDF document and return a first page
 -- The page is using the document size by default

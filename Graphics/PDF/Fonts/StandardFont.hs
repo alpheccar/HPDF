@@ -13,9 +13,10 @@
 ---------------------------------------------------------
 {-# LANGUAGE FlexibleContexts #-}
 module Graphics.PDF.Fonts.StandardFont(
-      IsFont(..)
+      IsFont
     , GlyphSize
     , FontName(..)
+    , StdFont
     , mkStdFont
 ) where 
 
@@ -25,11 +26,11 @@ import Graphics.PDF.Resources
 import Data.Char 
 import qualified Data.Map.Strict as M
 import Graphics.PDF.Fonts.Font
-import Graphics.PDF.Fonts.AFMParser 
+import Graphics.PDF.Fonts.AFMParser(getFont)
 import System.FilePath 
 import Graphics.PDF.Fonts.Encoding
+import Graphics.PDF.Fonts.FontTypes
 
-data StdFont = StdFont FontStructure
 
 data FontName = Helvetica 
               | Helvetica_Bold
@@ -78,8 +79,8 @@ instance PdfResourceObject StdFont where
 instance IsFont StdFont where 
   getDescent (StdFont fs) s = trueSize s $ descent fs 
   getHeight (StdFont fs) s = trueSize s $ height fs 
-  getKern (StdFont fs) s a b = trueSize s $ M.findWithDefault 0 (GlyphPair a b) (kern fs)
-  glyphWidth (StdFont fs) s a = trueSize s  $ M.findWithDefault 0 a (width fs)
+  getKern (StdFont fs) s a b = trueSize s $ M.findWithDefault 0 (GlyphPair a b) (kernMetrics fs)
+  glyphWidth (StdFont fs) s a = trueSize s  $ M.findWithDefault 0 a (widthData fs)
   charGlyph (StdFont fs) c = M.findWithDefault 0 c (encoding fs)
   name (StdFont fs) = baseFont fs 
   hyphenGlyph (StdFont fs) = hyphen fs 
@@ -95,7 +96,7 @@ mkStdFont f = do
                      ZapfDingbats -> return Nothing
                      Symbol -> return Nothing 
                      _ -> parseMacEncoding >>= return . Just
-  maybeFs <- getFont path theEncoding theMacEncoding
+  maybeFs <- getFont (Left path) theEncoding theMacEncoding
   case maybeFs of 
     Just theFont -> do
       let f' = theFont { baseFont = show f

@@ -24,8 +24,6 @@ import qualified Data.Vector.Unboxed as U
 import qualified Data.Text as T
 import Network.URI 
 import Data.Maybe(fromJust)
-import Graphics.PDF.Fonts.Font
-import Graphics.PDF.Fonts.StandardFont
 import System.FilePath 
 
 import Paths_HPDF

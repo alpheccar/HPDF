@@ -19,37 +19,44 @@ module Graphics.PDF.Fonts.Font(
     , FontSize 
     , PDFFont(..)
     , AnyFont(..)
-    , FontStructure(..)
-    , GlyphPair(..)
+    , FontStructure
+    , EmbeddedFont
+    , FontData
     , emptyFontStructure
     , fontSize
     , trueSize
+    , readFontData
 ) where 
 
 import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.Resources
 import qualified Data.Map.Strict as M
-
--- Fonts
-type FontSize = Int
-
-
-newtype GlyphSize = GlyphSize Int deriving(Eq,Ord,Num,Integral,Enum,Real)
-
-data GlyphPair = GlyphPair !GlyphCode !GlyphCode deriving(Eq,Ord) 
-
-data FontStructure = FS { baseFont :: String
-                        , descent :: !GlyphSize 
-                        , height :: !GlyphSize 
-                        , width :: M.Map GlyphCode GlyphSize 
-                        , kern :: M.Map GlyphPair GlyphSize 
-                        , hyphen :: Maybe GlyphCode 
-                        , space :: !GlyphCode
-                        , encoding :: M.Map Char GlyphCode
-                        }
+import qualified Data.ByteString as B
+import Graphics.PDF.Fonts.FontTypes
 
 emptyFontStructure :: FontStructure
-emptyFontStructure = FS "" 0 0 M.empty M.empty Nothing 0 M.empty
+emptyFontStructure = FS { baseFont = ""
+                        , descent = 0
+                        , ascent  = 0
+                        , height = 0
+                        , widthData = M.empty
+                        , kernMetrics = M.empty
+                        , hyphen = Nothing
+                        , space = 0
+                        , encoding = M.empty
+                        , fontBBox = []
+                        , italicAngle = 0
+                        , capHeight = 0
+                        , fixedPitch = False
+                        , serif = False
+                        , symbolic = False
+                        , script = False
+                        , nonSymbolic = False
+                        , italic = False
+                        , allCap = False
+                        , smallCap = False
+                        , forceBold = False
+                        }
 
 class IsFont f where
     {-
@@ -112,4 +119,15 @@ instance Ord PDFFont where
 
 trueSize :: Int -> GlyphSize -> PDFFloat
 trueSize fs glyphSize = (fromIntegral glyphSize * fromIntegral fs) / 1000.0
+
+
+
+
+
+readFontData :: FilePath -> IO FontData 
+readFontData f = do 
+    r <- B.readFile f 
+    return (Type1Data r)
+
+
 

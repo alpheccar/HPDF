@@ -378,3 +378,17 @@ modifyStrict f = do
   	
 -- | A monad where paths can be created
 class MonadWriter Builder m => MonadPath m
+
+{-
+
+Font types
+
+-}
+
+data EmbeddedFont 
+
+
+instance PdfObject EmbeddedFont where
+  toPDF _ = noPdfObject
+
+instance PdfLengthInfo EmbeddedFont where

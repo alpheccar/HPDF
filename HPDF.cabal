@@ -106,6 +106,7 @@ library
      Graphics.PDF.Text
      Graphics.PDF.Fonts.Font
      Graphics.PDF.Fonts.StandardFont
+     Graphics.PDF.Fonts.Type1
      Graphics.PDF.Typesetting.WritingSystem
      Graphics.PDF.Navigation
      Graphics.PDF.Image
@@ -119,6 +120,7 @@ library
      Paths_HPDF
   Other-Modules:
      Graphics.PDF.LowLevel.Types
+     Graphics.PDF.Fonts.FontTypes
      Graphics.PDF.Data.PDFTree
      Graphics.PDF.Data.Trie
      Graphics.PDF.Pages

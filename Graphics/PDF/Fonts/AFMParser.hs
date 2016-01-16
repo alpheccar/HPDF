@@ -13,7 +13,12 @@
 -- AFM Parser
 ---------------------------------------------------------
 module Graphics.PDF.Fonts.AFMParser(
-    getFont
+      getFont
+    , AFMFont(..)
+    , EncodingScheme(..)
+    , Metric(..)
+    , KX(..)
+    , parseFont
     ) where 
 
 import Text.ParserCombinators.Parsec hiding(space)
@@ -25,17 +30,19 @@ import Data.Maybe(isJust,fromJust,mapMaybe)
 import qualified Data.IntMap as IM
 import Data.List(intersperse)
 import qualified Data.Map.Strict as M
-import Graphics.PDF.Fonts.Font(FontStructure(..),emptyFontStructure,FontSize,GlyphSize,GlyphPair(..))
+import Graphics.PDF.Fonts.Font(emptyFontStructure)
 import Paths_HPDF
 import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.Fonts.Encoding(PostscriptName)
+import Graphics.PDF.Fonts.FontTypes
 
 capitalize :: String -> String
 capitalize [] = []
 capitalize (h:t) = toUpper h : t
 
+
 line :: Parser ()
-line = do string "\r\n"
+line = do string "\r\n" <|> string "\n"
           return ()
 
 toEndOfLine :: Parser ()
@@ -50,6 +57,19 @@ getString s = do
                c <- many1 (alphaNum <|> oneOf "-+")
                line
                return c
+
+getSentence :: String -> Parser String
+getSentence s = do 
+               string s
+               spaces
+               c <- many1 (alphaNum <|> oneOf " -+")
+               line
+               return c
+
+getNotice :: Parser ()
+getNotice = do string "Notice"
+               toEndOfLine
+               return ()
                
 getName :: String -> Parser String
 getName s = do 
@@ -110,13 +130,18 @@ comments :: Parser ()
 comments = do many1 (comment "Comment")
               return ()
               
-data EncodingScheme = AdobeStandardEncoding 
-                    | FontSpecific
+data EncodingScheme = AFMAdobeStandardEncoding 
+                    | AFMFontSpecific
+                    | AFMUnsupportedEncoding
                     deriving(Eq,Read,Show)
                 
 getEncoding :: String -> Parser EncodingScheme
-getEncoding s = do c <- getString s
-                   return $ read c
+getEncoding s = do 
+  c <- getString s
+  case c of 
+    "AdobeStandardEncoding" -> return AFMAdobeStandardEncoding
+    "FontSpecific" -> return AFMFontSpecific 
+    _ -> return  AFMUnsupportedEncoding     
                                            
 number :: Parser Int
 number  = do c <- many1 (oneOf "-+0123456789")
@@ -167,9 +192,16 @@ data Metric = Metric { charCode :: Int
 data AFMFont = AFMFont { metrics :: [Metric]
                        , underlinePosition :: Int
                        , underlineThickness :: Int
-                       , ascent :: Int
+                       , afmAscent :: Int
                        , afmDescent :: Int
                        , kernData :: Maybe [KX]
+                       , type1BaseFont :: String
+                       , encodingScheme :: EncodingScheme
+                       , afmItalic :: Double 
+                       , afmCapHeight :: Int
+                       , afmBBox :: [Double]
+                       , afmFixedPitch :: Bool
+                       , afmSymbolic :: Bool
                        }
                        deriving(Eq,Show)
                         
@@ -222,17 +254,18 @@ afm =
     comments
     fontName <- getString "FontName"
     fullName <- getName "FullName"
-    familyName <- getString "FamilyName"
+    familyName <- getSentence "FamilyName"
     weight <- getWeigth "Weight"
+    comment "Notice"
     italicAngle <- getFloat "ItalicAngle"
     isFixedPitch <- getBool "IsFixedPitch"
     characterSet <- getCharacterSet "CharacterSet"
     [xmin,ymin,xmax,ymax] <- getArray "FontBBox"
-    underlinePosition <- getInt "UnderlinePosition"
-    underlineThickness <- getInt "UnderlineThickness"
+    _underlinePosition <- getInt "UnderlinePosition"
+    _underlineThickness <- getInt "UnderlineThickness"
     comment "Version"
     comment "Notice"
-    encodingScheme <- getEncoding "EncodingScheme"
+    _encodingScheme <- getEncoding "EncodingScheme"
     capHeight <- option 0 $ getInt "CapHeight"
     xHeight <- option 0 $ getInt "XHeight"
     ascender <- option 0 $ getInt "Ascender"
@@ -244,13 +277,29 @@ afm =
     comment "EndCharMetrics"
     kerns <- option Nothing getKernData
     comment "EndFontMetrics"
+    let afm = AFMFont { metrics = charMetrics 
+                      , underlinePosition = _underlinePosition 
+                      , underlineThickness = _underlineThickness 
+                      , kernData = kerns
+                      , type1BaseFont = fontName
+                      , encodingScheme = _encodingScheme
+                      , afmItalic = italicAngle 
+                      , afmCapHeight = capHeight
+                      , afmBBox = [xmin,ymin,xmax,ymax]
+                      , afmFixedPitch = isFixedPitch
+                      , afmSymbolic = _encodingScheme /= AFMAdobeStandardEncoding
+                      }
     if ascender == 0 
     then
        let h = floor (ymax - ymin) in
-       return $ AFMFont charMetrics underlinePosition underlineThickness h 0 kerns
+       return $ afm { afmAscent = h 
+                    , afmDescent = 0 
+                    }
     else
-       return $ AFMFont charMetrics underlinePosition underlineThickness ascender descender kerns
-         
+       return $ afm { afmAscent = ascender 
+                    , afmDescent = descender 
+                    }
+
 
 
 addMetric :: M.Map PostscriptName GlyphCode -> Metric -> FontStructure -> FontStructure 
@@ -258,7 +307,7 @@ addMetric nameToGlyph m fs =
     let c = M.lookup (name m) nameToGlyph
         fs' = case c of 
                 Just glyphCode -> 
-                  fs { width = M.insert (fromIntegral glyphCode) (fromIntegral $ metricWidth m) (width fs)}
+                  fs { widthData = M.insert (fromIntegral glyphCode) (fromIntegral $ metricWidth m) (widthData fs)}
                 Nothing -> fs
     in 
     case (name m) of 
@@ -272,7 +321,7 @@ addKern d (KX sa sb c) fs =
       cbM = M.lookup sb d
   in 
   case (caM,cbM) of
-    (Just ca, Just cb) -> fs {kern = M.insert (GlyphPair ca cb) (fromIntegral c) (kern fs)}
+    (Just ca, Just cb) -> fs {kernMetrics = M.insert (GlyphPair ca cb) (fromIntegral c) (kernMetrics fs)}
     _ -> fs
 
 -- If the maybe argument is not nothing, we use the specific encoding for
@@ -284,11 +333,25 @@ fontToStructure :: AFMFont
                 -> Maybe (M.Map PostscriptName GlyphCode)
                 -> FontStructure 
 fontToStructure afm encoding maybeMapNameToGlyph =
-  let h = (ascent afm - afmDescent afm) 
+  let h = (afmAscent afm - afmDescent afm) 
       fs = emptyFontStructure { descent = fromIntegral $ - (afmDescent afm)
                               , height = fromIntegral $ h 
+                              , ascent = fromIntegral $ afmAscent afm
+                              , fontBBox = afmBBox afm
+                              , italicAngle = afmItalic afm
+                              , capHeight = fromIntegral $ afmCapHeight afm
+                              , fixedPitch = afmFixedPitch afm
+                              , serif = False
+                              , symbolic = afmSymbolic afm
+                              , script = False
+                              , nonSymbolic = not (afmSymbolic afm)
+                              , italic = False
+                              , allCap = False
+                              , smallCap = False
+                              , forceBold = False
                               }
-      addName m d = M.insert (name m) (fromIntegral $ charCode m) d 
+      addName m d | charCode m == -1 = d
+                  | otherwise = M.insert (name m) (fromIntegral $ charCode m) d 
       nameToGlyph = maybe (foldr addName M.empty (metrics afm)) id maybeMapNameToGlyph
       fs1 = foldr (addMetric nameToGlyph) fs (metrics afm)
       addEncodingMapping (pname,glyphcode) d = 
@@ -305,21 +368,27 @@ fontToStructure afm encoding maybeMapNameToGlyph =
     Just k -> foldr (addKern nameToGlyph) fs2 k
 
               
-parseFont :: String -> IO (Maybe AFMFont)
-parseFont s = do
+parseFont :: Either String String -> IO (Maybe AFMFont)
+parseFont (Left s) = do
     path <- getDataFileName s
     r <- parseFromFile afm path
     case r of
       Left e -> error (show e)
       Right r -> return $ Just r
+parseFont (Right path) = do
+    r <- parseFromFile afm path
+    case r of
+      Left e -> error (show e)
+      Right r -> return $ Just r
 
-getFont :: String 
+getFont :: Either String AFMFont
         -> M.Map PostscriptName Char  -- ^ Glyph name to unicode
         -> Maybe (M.Map PostscriptName GlyphCode)  -- ^ Glyph name to glyph code if not standard coding
         -> IO (Maybe FontStructure)
-getFont s encoding nameToGlyph = do 
-  result <- parseFont s 
+getFont (Left s) encoding nameToGlyph = do 
+  result <- parseFont (Left s) 
   case result of 
     Nothing -> return Nothing 
     Just r -> return (Just $ fontToStructure r encoding nameToGlyph)
+getFont (Right result) encoding nameToGlyph = return . Just $ fontToStructure result encoding nameToGlyph
 

@@ -21,17 +21,18 @@ import qualified Data.Vector.Unboxed as U
 import qualified Data.Text as T
 import Network.URI 
 import Data.Maybe(fromJust)
-import Data.Maybe(fromJust)
-import Graphics.PDF.Fonts.Font
-import Graphics.PDF.Fonts.StandardFont
+
 
 alpheccarURL = fromJust $ parseURI "http://www.alpheccar.org"
 
 vertical = 200.0
 margin = 10.0 
-debugText = "é"
+debugText = "abcdef1234"
 debugFontSize = 12
 lightBlue= Rgb 0.6 0.6 1.0
+
+testFont="/usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmb10.pfb"
+afm="/usr/local/texlive/2015/texmf-dist/fonts/afm/public/amsfonts/cm/cmb10.afm"
 
 data MyParaStyles = DebugStyle AnyFont
 data MyVertStyles = NormalPara
@@ -76,8 +77,10 @@ testAll theFont@(PDFFont f s) = do
         
 main :: IO()
 main = do
+    fontData <- readType1Font testFont afm
     Just timesRoman <- mkStdFont Times_Roman 
     let rect = PDFRect 0 0 600 400
     runPdf "demo.pdf" (standardDocInfo { author= "alpheccar éèçàü", compressed = False}) rect $ do
-        testAll (PDFFont timesRoman debugFontSize)
+        testFont <- mkType1Font fontData
+        testAll (PDFFont testFont debugFontSize)
      
