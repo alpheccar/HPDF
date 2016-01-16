@@ -371,6 +371,7 @@ fontToStructure afm encoding maybeMapNameToGlyph =
                               , allCap = False
                               , smallCap = False
                               , forceBold = False
+                              , baseFont = type1BaseFont afm
                               }
       addName m d | charCode m == -1 = d
                   | otherwise = M.insert (name m) (fromIntegral $ charCode m) d 
