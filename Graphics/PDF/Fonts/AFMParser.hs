@@ -256,7 +256,6 @@ afm =
     fullName <- getName "FullName"
     familyName <- getSentence "FamilyName"
     weight <- getWeigth "Weight"
-    comment "Notice"
     italicAngle <- getFloat "ItalicAngle"
     isFixedPitch <- getBool "IsFixedPitch"
     characterSet <- getCharacterSet "CharacterSet"
