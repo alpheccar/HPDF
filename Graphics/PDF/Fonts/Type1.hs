@@ -31,7 +31,7 @@ import Graphics.PDF.Fonts.AFMParser
 import System.FilePath 
 import Graphics.PDF.Fonts.Encoding
 import Graphics.PDF.Fonts.FontTypes
-import Graphics.PDF.Fonts.AFMParser (AFMFont)
+import Graphics.PDF.Fonts.AFMParser (AFMFont, parseFont)
 import Data.List 
 import Data.Function(on)
 

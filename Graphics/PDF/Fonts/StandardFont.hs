@@ -26,7 +26,7 @@ import Graphics.PDF.Resources
 import Data.Char 
 import qualified Data.Map.Strict as M
 import Graphics.PDF.Fonts.Font
-import Graphics.PDF.Fonts.AFMParser(getFont)
+import Graphics.PDF.Fonts.AFMParser(getFont,parseFont,AFMFont(..))
 import System.FilePath 
 import Graphics.PDF.Fonts.Encoding
 import Graphics.PDF.Fonts.FontTypes
