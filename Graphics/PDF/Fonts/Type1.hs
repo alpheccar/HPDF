@@ -58,10 +58,8 @@ mkType1FontStructure pdfRef (AFMData f)  = do
   theEncoding <- getEncoding AdobeStandardEncoding
   maybeFs <- getFont (Right f) theEncoding Nothing
   case maybeFs of 
-    Just theFont -> do
-      let f' = theFont { baseFont = show f
-                       }
-      return . Just $ Type1FontStructure pdfRef f' 
+    Just theFont -> 
+      return . Just $ Type1FontStructure pdfRef theFont
     Nothing -> return Nothing
 
  
