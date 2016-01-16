@@ -196,7 +196,7 @@ metricElem  = do char 'C'
               <|> 
               do char 'N'
                  spaces
-                 c <- many1 alphaNum
+                 c <- many1 (alphaNum <|> char '.')
                  return $ N c
               <|>
               do char 'B'
@@ -236,9 +236,9 @@ charMetric = do
 kernPair :: AFMParser KX
 kernPair = do string "KPX"
               spaces
-              namea <- many1 letter
+              namea <- many1 alphaNum
               spaces
-              nameb <- many1 letter
+              nameb <- many1 alphaNum
               spaces
               nb <- many1 (oneOf "-+0123456789")
               line
@@ -317,10 +317,15 @@ afm =
     let [xmin,ymin,xmax,ymax] = afmBBox afm
     if afmAscent afm == 0 
     then
-       let h = floor (ymax - ymin) in
-       return $ afm { afmAscent = h 
-                    , afmDescent = 0 
-                    }
+       if afmCapHeight afm /= 0 
+          then
+              return $ afm { afmAscent = afmCapHeight afm
+                           }
+          else
+              let h = floor (ymax - ymin) in
+              return $ afm { afmAscent = h 
+                           , afmDescent = 0 
+                           }
     else
        return $ afm
 

@@ -79,7 +79,8 @@ instance PdfResourceObject Type1Font where
             codes = map fst . M.toList $ widthData f
             firstChar = head . sort $ codes
             lastChar = head . reverse . sort $ codes
-            widths = map (AnyPdfObject . PDFInteger . fromIntegral . snd) . sortBy (compare `on` fst) . M.toList $ widthData f
+            findWidth c = PDFInteger . fromIntegral $ M.findWithDefault 0 c (widthData f)
+            widths = map findWidth [firstChar .. lastChar] 
             bbox = map AnyPdfObject .fontBBox $ f 
             descriptor = PDFDictionary . M.fromList $ 
           	  [ (PDFName "Type",AnyPdfObject . PDFName $ "Font")

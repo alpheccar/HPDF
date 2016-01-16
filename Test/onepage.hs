@@ -21,18 +21,20 @@ import qualified Data.Vector.Unboxed as U
 import qualified Data.Text as T
 import Network.URI 
 import Data.Maybe(fromJust)
+import Control.Monad.IO.Class
 
+import Debug.Trace 
 
 alpheccarURL = fromJust $ parseURI "http://www.alpheccar.org"
 
 vertical = 200.0
 margin = 10.0 
-debugText = "abcdef1234"
+debugText = "Встретились)"
 debugFontSize = 12
 lightBlue= Rgb 0.6 0.6 1.0
 
-testFont="/usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmb10.pfb"
-afm="/usr/local/texlive/2015/texmf-dist/fonts/afm/public/amsfonts/cm/cmb10.afm"
+testFont="/usr/local/texlive/2015/texmf-dist/fonts/type1/public/droid/DroidSans.pfb"
+afm="/usr/local/texlive/2015/texmf-dist/fonts/afm/public/droid/DroidSans.afm"
 
 data MyParaStyles = DebugStyle AnyFont
 data MyVertStyles = NormalPara
@@ -83,4 +85,5 @@ main = do
     runPdf "demo.pdf" (standardDocInfo { author= "alpheccar éèçàü", compressed = False}) rect $ do
         testFont <- mkType1Font fontData
         testAll (PDFFont testFont debugFontSize)
-     
+        traceM . show $ (spaceGlyph testFont)
+        traceM . show $ 1000 * (glyphWidth testFont debugFontSize $ spaceGlyph testFont) / fromIntegral debugFontSize
