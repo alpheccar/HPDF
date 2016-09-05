@@ -321,7 +321,7 @@ pdfDictUnion (PDFDictionary a) (PDFDictionary b) = PDFDictionary $ M.union a b
 data PDFRect = PDFRect !Double !Double !Double !Double
   
 instance PdfObject PDFRect where
- toPDF (PDFRect a b c d) = toPDF . map (AnyPdfObject . PDFInteger) $ [a,b,c,d]
+ toPDF (PDFRect a b c d) = toPDF . map AnyPdfObject $ [a,b,c,d]
  
 instance PdfLengthInfo PDFRect where
 
