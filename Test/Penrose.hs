@@ -102,7 +102,7 @@ a' s = withNewContext $ do
 
 penrose :: PDF ()  
 penrose  =  do
-    page <- addPage (Just (PDFRect 0 0 (round (1.5*width)) (round width)))
+    page <- addPage (Just (PDFRect 0 0 (1.5*width) width))
     newSection "Penrose" Nothing Nothing $ do
         drawWithPage page $ do
             applyMatrix (translate (20 :+ 5))
