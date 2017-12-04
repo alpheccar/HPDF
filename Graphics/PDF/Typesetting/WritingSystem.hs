@@ -11,21 +11,17 @@
 ---------------------------------------------------------
 module Graphics.PDF.Typesetting.WritingSystem(
       WritingSystem(..)
-    , Language(..)
     , mapToSpecialGlyphs
 ) where 
 
 import qualified Data.Text as T
 import Graphics.PDF.LowLevel.Types
-import qualified Graphics.PDF.Hyphenate as H
+import qualified Text.Hyphenation as H
 import Data.List(intersperse)
 import Data.Char 
 import Data.List(unfoldr)
 
-data Language = English 
-              | OtherLanguage 
-
-data WritingSystem = Latin Language
+data WritingSystem = Latin H.Hyphenator
                    | UnknownWritingSystem
 
 
@@ -49,9 +45,11 @@ myWords l = concatMap onlyWord . unfoldr myWords' $ l
          (True,False) -> [p]
          (False,False) -> [w,p]
 
-addHyphens :: H.HyphenationDatabase -> T.Text -> T.Text
-addHyphens db f = T.concat . map (T.concat . intersperse (T.pack "/-") . H.hyphenate db) . myWords $ f
-
+addHyphens :: H.Hyphenator -> T.Text -> T.Text
+addHyphens hn f =
+    T.concat . map (T.concat . intersperse (T.pack "/-") . hyphenate) . myWords $ f
+  where
+    hyphenate = fmap T.pack . H.hyphenate hn . T.unpack
 
 mapToSpecialGlyphs :: WritingSystem -> T.Text -> [SpecialChar]
 mapToSpecialGlyphs UnknownWritingSystem theText = 
@@ -59,12 +57,7 @@ mapToSpecialGlyphs UnknownWritingSystem theText =
       getBreakingGlyphs (a:l) = NormalChar a:getBreakingGlyphs l 
       getBreakingGlyphs [] = []
   in getBreakingGlyphs (T.unpack theText)
-mapToSpecialGlyphs (Latin OtherLanguage) theText = 
-  let getBreakingGlyphs (' ':l) = NormalSpace:getBreakingGlyphs l 
-      getBreakingGlyphs (a:l) = NormalChar a:getBreakingGlyphs l 
-      getBreakingGlyphs [] = []
-  in getBreakingGlyphs (T.unpack theText)
-mapToSpecialGlyphs (Latin English) theText = 
+mapToSpecialGlyphs (Latin hn) theText =
   let getBreakingGlyphs [] = []
       getBreakingGlyphs (a:'/':'-':d:l) = (NormalChar a):BreakingHyphen:getBreakingGlyphs (d:l)
       getBreakingGlyphs (',':' ':l) = NormalChar ',':BiggerSpace:getBreakingGlyphs l
@@ -75,4 +68,4 @@ mapToSpecialGlyphs (Latin English) theText =
       getBreakingGlyphs ('?':' ':l) = NormalChar '?':BiggerSpace:getBreakingGlyphs l
       getBreakingGlyphs (' ':l) = NormalSpace:getBreakingGlyphs l
       getBreakingGlyphs (a:l) = NormalChar a:getBreakingGlyphs l
-  in getBreakingGlyphs (T.unpack . addHyphens (H.English Nothing) $ theText)
+  in getBreakingGlyphs (T.unpack . addHyphens hn $ theText)

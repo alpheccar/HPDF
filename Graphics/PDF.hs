@@ -62,14 +62,12 @@ module Graphics.PDF
   , mkType1Font
   -- ** Typesetting
   , module Graphics.PDF.Typesetting
-  , module Graphics.PDF.Hyphenate
   ) where
 
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
 #endif
  
-import Graphics.PDF.Hyphenate
 import Graphics.PDF.Typesetting
 import Graphics.PDF.Shading
 import Graphics.PDF.Pattern
