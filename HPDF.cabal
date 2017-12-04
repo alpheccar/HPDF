@@ -87,7 +87,8 @@ library
       text >= 1.2.0,
       network-uri >= 2.6.0.3,
       parsec >=3.1.9,
-      filepath >= 1.4.0
+      filepath >= 1.4.0,
+      hyphenation
   Default-language:  Haskell2010
 
   ghc-options: -Wall -fno-warn-tabs -funbox-strict-fields  -O2
@@ -115,7 +116,6 @@ library
      Graphics.PDF.Pattern
      Graphics.PDF.Shading
      Graphics.PDF.Typesetting
-     Graphics.PDF.Hyphenate
      Graphics.PDF.Documentation
      Paths_HPDF
   Other-Modules:
@@ -126,8 +126,6 @@ library
      Graphics.PDF.Pages
      Graphics.PDF.Resources
      Graphics.PDF.Draw
-     Graphics.PDF.Hyphenate.English
-     Graphics.PDF.Hyphenate.LowLevel
      Graphics.PDF.Typesetting.Breaking
      Graphics.PDF.Typesetting.Horizontal
      Graphics.PDF.Typesetting.Vertical
