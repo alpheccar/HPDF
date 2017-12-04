@@ -11,7 +11,6 @@
 ---------------------------------------------------------
 module Graphics.PDF.Typesetting.WritingSystem(
       WritingSystem(..)
-    , Language(..)
     , mapToSpecialGlyphs
 ) where 
 
@@ -22,11 +21,7 @@ import Data.List(intersperse)
 import Data.Char 
 import Data.List(unfoldr)
 
-data Language = English
-              | German
-              | OtherLanguage
-
-data WritingSystem = Latin Language
+data WritingSystem = Latin H.Hyphenator
                    | UnknownWritingSystem
 
 
@@ -56,9 +51,13 @@ addHyphens hn f =
   where
     hyphenate = fmap T.pack . H.hyphenate hn . T.unpack
 
-
-mapGlyphsGerEng :: H.Hyphenator -> T.Text -> [SpecialChar]
-mapGlyphsGerEng hn theText =
+mapToSpecialGlyphs :: WritingSystem -> T.Text -> [SpecialChar]
+mapToSpecialGlyphs UnknownWritingSystem theText = 
+  let getBreakingGlyphs (' ':l) = NormalSpace:getBreakingGlyphs l 
+      getBreakingGlyphs (a:l) = NormalChar a:getBreakingGlyphs l 
+      getBreakingGlyphs [] = []
+  in getBreakingGlyphs (T.unpack theText)
+mapToSpecialGlyphs (Latin hn) theText =
   let getBreakingGlyphs [] = []
       getBreakingGlyphs (a:'/':'-':d:l) = (NormalChar a):BreakingHyphen:getBreakingGlyphs (d:l)
       getBreakingGlyphs (',':' ':l) = NormalChar ',':BiggerSpace:getBreakingGlyphs l
@@ -70,17 +69,3 @@ mapGlyphsGerEng hn theText =
       getBreakingGlyphs (' ':l) = NormalSpace:getBreakingGlyphs l
       getBreakingGlyphs (a:l) = NormalChar a:getBreakingGlyphs l
   in getBreakingGlyphs (T.unpack . addHyphens hn $ theText)
-
-mapToSpecialGlyphs :: WritingSystem -> T.Text -> [SpecialChar]
-mapToSpecialGlyphs UnknownWritingSystem theText = 
-  let getBreakingGlyphs (' ':l) = NormalSpace:getBreakingGlyphs l 
-      getBreakingGlyphs (a:l) = NormalChar a:getBreakingGlyphs l 
-      getBreakingGlyphs [] = []
-  in getBreakingGlyphs (T.unpack theText)
-mapToSpecialGlyphs (Latin OtherLanguage) theText = 
-  let getBreakingGlyphs (' ':l) = NormalSpace:getBreakingGlyphs l 
-      getBreakingGlyphs (a:l) = NormalChar a:getBreakingGlyphs l 
-      getBreakingGlyphs [] = []
-  in getBreakingGlyphs (T.unpack theText)
-mapToSpecialGlyphs (Latin German) theText = mapGlyphsGerEng H.german_1996 theText
-mapToSpecialGlyphs (Latin English) theText = mapGlyphsGerEng H.english_US theText

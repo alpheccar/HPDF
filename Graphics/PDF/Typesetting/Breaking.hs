@@ -52,6 +52,7 @@ import Data.Maybe(fromJust)
 import Graphics.PDF.Fonts.Font hiding(fontSize)
 import Graphics.PDF.Typesetting.WritingSystem
 import qualified Data.Text as T(Text)
+import qualified Text.Hyphenation as H
 --import Debug.Trace
 
 data Justification = FullJustification
@@ -232,11 +233,9 @@ data BRState = BRState { firstPassTolerance :: !PDFFloat -- ^ Default value 100
                        , centered :: !Justification -- ^ Default value false
                        , writingSystem :: !WritingSystem
                        }
-                       
-defaultBreakingSettings :: BRState
-defaultBreakingSettings = BRState 100 100 50 1000 1000 10 FullJustification (Latin English)
 
-                  
+defaultBreakingSettings :: BRState
+defaultBreakingSettings = BRState 100 100 50 1000 1000 10 FullJustification (Latin H.english_US)
 
 
 computeDemerit :: Bool
