@@ -18,9 +18,6 @@ module Graphics.PDF.LowLevel.Serializer(
   SerializeValue(..)
  ) where
    
-   
-import Data.Monoid
-
 import Data.Word 
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Binary.Builder as BU

@@ -110,8 +110,6 @@ import Graphics.PDF.Typesetting.Layout
 import Graphics.PDF.Typesetting.Box
 import Graphics.PDF.Typesetting.StandardStyle
 import Graphics.PDF.Typesetting.WritingSystem
-import Data.List(unfoldr,intersperse)
-import Data.Char(isSpace,isAlpha)
 import qualified Data.Text as T
 
 -- | Display a formatted text in a given bounding rectangle with a given default paragraph style, a given default text style. No clipping

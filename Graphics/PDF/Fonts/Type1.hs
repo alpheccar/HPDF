@@ -15,7 +15,7 @@
 module Graphics.PDF.Fonts.Type1(
       IsFont
     , GlyphSize
-    , Type1Font
+    , Type1Font(..)
     , AFMData
     , Type1FontStructure(..)
     , getAfmData
@@ -24,16 +24,15 @@ module Graphics.PDF.Fonts.Type1(
 
 import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.Resources
-import Data.Char 
 import qualified Data.Map.Strict as M
 import Graphics.PDF.Fonts.Font
-import Graphics.PDF.Fonts.AFMParser 
-import System.FilePath 
+-- import Graphics.PDF.Fonts.AFMParser
 import Graphics.PDF.Fonts.Encoding
 import Graphics.PDF.Fonts.FontTypes
-import Graphics.PDF.Fonts.AFMParser (AFMFont, parseFont)
-import Data.List 
-import Data.Function(on)
+import Graphics.PDF.Fonts.AFMParser (AFMFont, getFont, parseFont)
+import Data.List
+
+data Type1Font = Type1Font FontStructure (PDFReference EmbeddedFont)
 
 instance IsFont Type1Font where 
   getDescent (Type1Font fs _) s = trueSize s $ descent fs 
