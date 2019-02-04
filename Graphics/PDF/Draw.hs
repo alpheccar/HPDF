@@ -7,7 +7,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -87,7 +87,7 @@ import Data.Maybe
 import Data.Monoid
 #endif
 
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.IntMap as IM
 import qualified Data.Binary.Builder as BU
 import qualified Data.ByteString.Lazy as B
@@ -104,16 +104,15 @@ import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.LowLevel.Serializer
 import Graphics.PDF.Resources
 import Graphics.PDF.Data.PDFTree(PDFTree)
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative
-#endif
+import qualified Data.Text as T
+import Graphics.PDF.Fonts.Font(PDFFont(..))
 
 data AnnotationStyle = AnnotationStyle !(Maybe Color)
 
 class AnnotationObject a where
     addAnnotation :: a -> PDF (PDFReference a)
     annotationType :: a -> PDFName
-    annotationContent :: a -> PDFString
+    annotationContent :: a -> AnyPdfObject
     annotationRect :: a -> [PDFFloat]
     annotationToGlobalCoordinates :: a -> Draw a
     annotationToGlobalCoordinates = return
@@ -483,8 +482,8 @@ data PDFTransStyle = Split PDFTransDimension PDFTransDirection
 
 -- | Document metadata
 data PDFDocumentInfo = PDFDocumentInfo {
-                     author :: PDFString
-                   , subject :: PDFString
+                     author :: T.Text
+                   , subject :: T.Text
                    , pageMode :: PDFDocumentPageMode
                    , pageLayout :: PDFDocumentPageLayout
                    , viewerPreferences :: PDFViewerPreferences

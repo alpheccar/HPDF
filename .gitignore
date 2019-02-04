@@ -1,4 +1,3 @@
-Core14_AFMs/
 dist/
 test/*.hi
 test/*.pdf
@@ -6,4 +5,5 @@ test/test
 test/afm
 test/*.o
 .HTF
+.stack-work
 

@@ -1,6 +1,6 @@
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -32,6 +32,8 @@ module Graphics.PDF.Pages(
  , recordBound
  , setPageResource
  , setPageAnnotations
+ , readType1Font
+ , mkType1Font
  ) where
      
 import qualified Data.IntMap as IM
@@ -41,8 +43,12 @@ import Graphics.PDF.Draw
 import qualified Graphics.PDF.Data.PDFTree as PT hiding(PDFTree,Key)
 import Graphics.PDF.Resources
 import Data.List(zip4)
-
+import Graphics.PDF.Fonts.Font
 import Graphics.PDF.Data.PDFTree(PDFTree,Key)
+import Control.Monad.Writer 
+import Data.Binary.Builder(Builder,fromLazyByteString,fromByteString)
+import Graphics.PDF.Fonts.FontTypes(FontData(..),Type1Font(..))
+import Graphics.PDF.Fonts.Type1 
 
 -- | Set page annotations
 setPageAnnotations :: [AnyAnnotation] -> PDFReference PDFPage -> PDF ()
@@ -265,4 +271,27 @@ recordBound :: Int -- ^ Reference
             -> PDFFloat -- ^ Height
             -> PDF ()
 recordBound ref width height = modifyStrict $ \s -> s {xobjectBound = IM.insert ref (width,height) (xobjectBound s)}
+
+
+-- | Create an embedded font
+createEmbeddedFont :: FontData -> PDF (PDFReference EmbeddedFont)
+createEmbeddedFont (Type1Data d) = do 
+    PDFReference s <-  createContent (tell $ fromByteString d) Nothing 
+    return (PDFReference s)
+
+-- | Create a type 1 font 
+readType1Font :: FilePath 
+              -> FilePath 
+              -> IO Type1FontStructure 
+readType1Font pfb afmPath  = do 
+  fd <- readFontData pfb 
+  afm <- getAfmData afmPath 
+  Just fs <- mkType1FontStructure fd afm 
+  return fs
+
+mkType1Font :: Type1FontStructure -> PDF AnyFont 
+mkType1Font (Type1FontStructure fd fs) = do 
+   ref <- createEmbeddedFont fd 
+   return (AnyFont $ Type1Font fs ref)
+
 

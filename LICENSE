@@ -1,4 +1,4 @@
-* Copyright (c) 2006-2013, alpheccar.org
+* Copyright (c) 2006-2016, alpheccar.org
 * All rights reserved.
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -23,9 +23,16 @@
 * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *
+* Files not covered by the above license are covered by their respective licences:
+*
 * PDFTree.hs reusing the code from IntMap : Copyright Daan Leijen. See the comments in the file.
 *
 * For hyphenation see files in Graphics/PDF/Hyphenate
 * 
 *   Extra patterns, from ushyphmax.tex, dated 2005-05-30.
 *   -- Copyright (C) 1990, 2004, 2005 Gerard D.C. Kuiken.
+*
+* For the license for the included AFM Files, see the MustRead.html file in folder Core14_AFMs
+*
+* For the license for the unicode to Adobe encodings, see the headers in each files of the folder Encoding.
+*

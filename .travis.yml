@@ -1,0 +1,25 @@
+sudo: false
+language: c
+addons:
+  apt:
+    packages:
+    - libgmp-dev
+env:
+- ARGS=""
+- ARGS="--resolver lts-4"
+- ARGS="--resolver lts-3"
+- ARGS="--resolver lts"
+- ARGS="--resolver nightly"
+before_install:
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards
+  --strip-components=1 -C ~/.local/bin '*/stack'
+script: stack $ARGS --no-terminal --install-ghc test --haddock
+cache:
+  directories:
+  - $HOME/.stack
+notifications:
+  slack:
+    rooms:
+      secure: T08fQxhbK0dszfIFxjWKpwN24hORLZTEA0Ax+qAUdyIf0zKRNTLpofcZ9E5pIM6FvXTZjAGeKP9Qym55grFtbTiNm7fpr/LCCdACghaRIi+n0dbw32GpTaj3BNZG4mp5DWyFYpp5lpql6TeUHY/a32HlejQMu3YX7q6apRy26iLewgylBNuW9ixnMR5krwTws6CXy7oa50CCVdHpwf/ye5SCoE5AZ74sRVzGGKrW6xeem5L5HO/sZ5YGWpZ0bbOkBUSGERVCHad/1IBqnwI8RKMT1QwprScCpE8fiRfi6eoSQqsaZTRIKbrzB0w4lLMcIzFBid+jCpGn4gqcFva6qWHYT12v436krXcyuOtUOtQIar3WJnaE6Y4aPWr7gSlIyWHMaS0dvVm0psReWZa1CitfZN80ROEDkVPojn3SewEzGmaLostwtrg1oQ5IIT743brSWnuYL6dtx7i3bv1GYIZ+GP2loxIt2SoV8FIqwGxQ58WfoAnE+IZhvaPQFvO/C89y6Zs27/0WBVJOLan2JIE47nPjxHxFIlpSeZWGoBfZGSyg7z06Ee4+VfPDwl2GjrRCtCzJRm06cSzoX1XVCgFHD2y5XywE5Cxb1hFe7m/6oQG5oU/4a/ax0KTFNf7DBzw+04UnDXlVrgZOsdQOVy0q9e5wClcNF2rLX+eomwM=

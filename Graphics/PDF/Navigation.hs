@@ -1,6 +1,6 @@
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -25,6 +25,7 @@ import Graphics.PDF.LowLevel.Types
 import Control.Monad.State(gets)
 import Control.Monad(when)
 import Data.Maybe(isNothing)
+import qualified Data.Text as T
 
 -- | True if we are adding the first outline to this level
 isFirst :: [Bool] -> Bool
@@ -46,21 +47,21 @@ closeNew = do
     modifyStrict $ \s -> s{firstOutline = tail (firstOutline s)}
 
 -- | Create a new outline section pointing to the last created page
-newSection :: PDFString -- ^ Outline title
+newSection :: T.Text -- ^ Outline title
            -> Maybe Color -- ^ Outline color
            -> Maybe OutlineStyle -- ^Outline style
            -> PDF ()
            -> PDF ()
-newSection myS col style p = newSectionPrivate myS col style Nothing p
+newSection myS col style p = newSectionPrivate (toPDFString myS) col style Nothing p
 
 -- | Create a new outline section pointing to a given page
-newSectionWithPage :: PDFString -- ^ Outline title
+newSectionWithPage :: T.Text -- ^ Outline title
                    -> Maybe Color -- ^ Outline color
                    -> Maybe OutlineStyle -- ^ Outline style
                    -> PDFReference PDFPage -- ^ Page reference
                    -> PDF ()
                    -> PDF ()
-newSectionWithPage myS col style page p = newSectionPrivate myS col style (Just page) p
+newSectionWithPage myS col style page p = newSectionPrivate (toPDFString myS) col style (Just page) p
     
 newSectionPrivate :: PDFString -- ^ Outline title
                   -> Maybe Color -- ^ Outline color

@@ -1,6 +1,6 @@
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -19,14 +19,18 @@ module Graphics.PDF.Annotation(
    , TextIcon(..)
    -- ** Functions
    , newAnnotation
+   , toAsciiString
  ) where
 
 import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.Draw
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Graphics.PDF.Action
 import Graphics.PDF.Pages
 import Control.Monad.State(gets)
+import qualified Data.Text as T
+import Network.URI 
+
 --import Debug.Trace
 
 data TextIcon = Note
@@ -40,16 +44,16 @@ data TextIcon = Note
     
                   
 data TextAnnotation = TextAnnotation 
-   PDFString -- Content
+   T.Text -- Content
    [PDFFloat] -- Rect
    TextIcon
 data URLLink = URLLink 
-  PDFString -- Content
+  T.Text -- Content
   [PDFFloat] -- Rect
-  String -- URL
+  URI -- URL
   Bool -- Border
 data PDFLink = PDFLink 
-  PDFString -- Content
+  T.Text -- Content
   [PDFFloat] -- Rect
   (PDFReference PDFPage) -- Page
   PDFFloat -- x
@@ -124,7 +128,7 @@ instance PdfLengthInfo TextAnnotation where
 instance AnnotationObject TextAnnotation where
     addAnnotation = addObject
     annotationType _ = PDFName "Text"
-    annotationContent (TextAnnotation s _ _) = s
+    annotationContent (TextAnnotation s _ _) = AnyPdfObject (toPDFString s)
     annotationRect (TextAnnotation _ r _) = r
     annotationToGlobalCoordinates (TextAnnotation a r b) = do
         gr <- transformAnnotRect r
@@ -142,7 +146,7 @@ instance PdfLengthInfo URLLink where
 instance AnnotationObject URLLink where
     addAnnotation = addObject
     annotationType _ = PDFName "Link"
-    annotationContent (URLLink s _ _ _) = s
+    annotationContent (URLLink s _ _ _) = AnyPdfObject (toPDFString s)
     annotationRect (URLLink _ r _ _) = r
     annotationToGlobalCoordinates (URLLink a r b c) = do
         gr <- transformAnnotRect r
@@ -165,7 +169,7 @@ instance PdfLengthInfo PDFLink where
 instance AnnotationObject PDFLink where
     addAnnotation = addObject
     annotationType _ = PDFName "Link"
-    annotationContent (PDFLink s _ _ _ _ _) = s
+    annotationContent (PDFLink s _ _ _ _ _) = AnyPdfObject (toPDFString s)
     annotationRect (PDFLink _ r _ _ _ _) = r
     annotationToGlobalCoordinates (PDFLink a r b c d e) = do
         gr <- transformAnnotRect r

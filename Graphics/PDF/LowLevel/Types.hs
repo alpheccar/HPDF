@@ -4,9 +4,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -18,21 +19,38 @@
 -- #hide
 module Graphics.PDF.LowLevel.Types where
 
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Data.List(intersperse)
 import Data.Int
 import Control.Monad.State
 import Control.Monad.Writer
-import Data.Word
 import Data.Binary.Builder(Builder,fromByteString)
 import Graphics.PDF.LowLevel.Serializer
 import Data.Complex
 import qualified Data.ByteString as S
-#if __GLASGOW_HASKELL__ >= 608
 import qualified Data.ByteString.Lazy.Internal as L(ByteString(..))
-#else
-import qualified Data.ByteString.Base as L(LazyByteString(..))
-#endif
+import Data.Text.Encoding
+import qualified Data.Text as T
+import qualified Data.ByteString.Char8 as C
+import Data.Word 
+import Data.Char(ord)
+import Text.Printf(printf)
+
+{-
+
+Low level typesetting types
+
+-}
+data SpecialChar = NormalChar !Char
+                 | BreakingHyphen
+                 | BiggerSpace
+                 | NormalSpace
+
+{-
+
+PDF Specific low level types
+
+-}
 
 -- | PDF Objects
 class PdfObject a where
@@ -102,48 +120,89 @@ instance PdfLengthInfo (Complex PDFFloat) where
 
   
 instance PdfObject Bool where
-  toPDF (True) = serialize "true"
-  toPDF (False) = serialize "false"
+  toPDF (True) = serialize ("true" :: String)
+  toPDF (False) = serialize ("false" :: String)
 
 instance PdfLengthInfo Bool where
 
 
--- | A PDFString containing a strict bytestring
+-- | A PDFString containing a strict bytestring (serialied as UTF16BE)
 newtype PDFString = PDFString S.ByteString deriving(Eq,Ord,Show)
 
+-- | A list of glyph to be used in text operators
+newtype PDFGlyph = PDFGlyph S.ByteString deriving(Eq,Ord,Show)
+
+-- | A list of glyph to be used in text operators
+newtype EscapedPDFGlyph = EscapedPDFGlyph S.ByteString deriving(Eq,Ord,Show)
+
+-- | 7 bit encoded ASCII string
+newtype AsciiString = AsciiString S.ByteString deriving(Eq,Ord,Show)
+
+-- | 7 bit encoded ASCII string
+newtype EscapedAsciiString = EscapedAsciiString S.ByteString deriving(Eq,Ord,Show)
+
+escapeText :: Char -> T.Text
+escapeText '(' = "\\("
+escapeText ')' = "\\)"
+escapeText '\\' = "\\\\"
+escapeText a = T.singleton a
+
+escapeByteString :: Char -> S.ByteString
+escapeByteString '(' = C.pack "\\("
+escapeByteString ')' = C.pack "\\)"
+escapeByteString '\\' = C.pack "\\\\"
+escapeByteString a = C.singleton a
+
 -- | Create a PDF string from an Haskell one
-toPDFString :: String -> PDFString
-toPDFString = PDFString . S.pack . map encodeISO88591 -- . escapeString
+toPDFString :: T.Text -> PDFString
+toPDFString = PDFString . encodeUtf16BE
 
-encodeISO88591 :: Char -> Word8
-encodeISO88591 a = 
-    let c = fromEnum a in
-    if c < 32 || c >= 256 then 32 else fromIntegral c 
+toPDFGlyph :: S.ByteString -> PDFGlyph
+toPDFGlyph = PDFGlyph 
 
-#if __GLASGOW_HASKELL__ >= 608
+toAsciiString :: String -> AsciiString 
+toAsciiString s = AsciiString (C.pack s)
+
+class HasHexaStream a where 
+  toHexaStream :: a -> S.ByteString 
+
+instance HasHexaStream S.ByteString where 
+    toHexaStream x  = 
+        let hexChar c = C.pack (printf "%02X" (ord c) :: String)
+        in
+        C.cons 'F' . C.cons 'E' . C.cons 'F' . C.cons 'F' . C.concatMap hexChar $ x
+
+instance HasHexaStream PDFString where 
+  toHexaStream (PDFString x) = toHexaStream x
+
+instance HasHexaStream PDFGlyph where 
+  toHexaStream (PDFGlyph x) = 
+    let hexChar c = C.pack (printf "%02X" (ord c) :: String)
+        in
+        C.concatMap hexChar $ x
+
+
+newtype GlyphCode = GlyphCode Word8 deriving(Eq,Ord,Show,Integral,Bounded,Enum,Real,Num)
+
+
 instance SerializeValue L.ByteString PDFString where
   serialize (PDFString t) = L.Chunk t L.Empty
-#else
-instance SerializeValue L.LazyByteString PDFString where
-  serialize (PDFString t) = L.LPS [t] 
-#endif
 
 instance SerializeValue Builder PDFString where
   serialize (PDFString t) = fromByteString t
 
--- | Escape PDF characters which have a special meaning
-escapeString :: PDFString -> PDFString
-escapeString (PDFString t) = PDFString . S.pack . escapeOnWords8 . S.unpack $ t
+instance SerializeValue L.ByteString PDFGlyph where
+  serialize (PDFGlyph t) = L.Chunk t L.Empty
 
-pc2w :: Char -> Word8
-pc2w = fromIntegral . fromEnum
 
-escapeOnWords8 :: [Word8] -> [Word8]
-escapeOnWords8 [] = []
-escapeOnWords8 (a:l) | a == pc2w '(' = (pc2w '\\'):(pc2w '('):escapeOnWords8 l
-                     | a == pc2w ')' = (pc2w '\\'):(pc2w ')'):escapeOnWords8 l
-                     | a == pc2w '\\' = (pc2w '\\'):(pc2w '\\'):escapeOnWords8 l
-                     | otherwise = a:escapeOnWords8 l
+instance SerializeValue Builder EscapedPDFGlyph where
+  serialize (EscapedPDFGlyph t) = fromByteString t
+
+instance SerializeValue L.ByteString AsciiString where
+  serialize (AsciiString t) = L.Chunk t L.Empty
+
+instance SerializeValue Builder EscapedAsciiString where
+  serialize (EscapedAsciiString t) = fromByteString t
 
 -- Misc strings useful to build bytestrings
 
@@ -173,15 +232,38 @@ newline = serialize  '\n'
 
 noPdfObject :: Monoid s => s
 noPdfObject = mempty
+
+espacePDFGlyph :: PDFGlyph -> EscapedPDFGlyph 
+espacePDFGlyph (PDFGlyph t) = EscapedPDFGlyph . C.concatMap escapeByteString $ t
+
+espaceAsciiString :: AsciiString -> EscapedAsciiString 
+espaceAsciiString (AsciiString t) = EscapedAsciiString . C.concatMap escapeByteString $ t
     
 instance PdfObject PDFString where
-  toPDF a = mconcat [ lparen
-                    , serialize . escapeString $ a
-                    , rparen
+  toPDF a = mconcat [ blt
+                    , fromByteString $ toHexaStream a
+                    , bgt
                     ]
 
 instance PdfLengthInfo PDFString where
 
+instance PdfObject PDFGlyph where
+  toPDF a = mconcat [ blt
+                    --, serialize . espacePDFGlyph $ a 
+                    , fromByteString $ toHexaStream a
+                    , bgt
+                    ]
+
+instance PdfLengthInfo PDFGlyph where
+
+
+instance PdfLengthInfo AsciiString where
+
+instance PdfObject AsciiString where
+  toPDF a = mconcat [ lparen
+                    , serialize . espaceAsciiString $ a 
+                    , rparen
+                    ]
 
 -- | A PDFName object
 newtype PDFName = PDFName String deriving(Eq,Ord)
@@ -217,7 +299,7 @@ instance PdfObject PDFDictionary where
                                                                     ]
                                                                        
           in 
-           M.foldWithKey convertItem mempty a
+           M.foldrWithKey convertItem mempty a
   
 instance PdfLengthInfo PDFDictionary where
 
@@ -236,10 +318,10 @@ pdfDictUnion (PDFDictionary a) (PDFDictionary b) = PDFDictionary $ M.union a b
 
   
 -- | A PDF rectangle
-data PDFRect = PDFRect !Int !Int !Int !Int
+data PDFRect = PDFRect !Double !Double !Double !Double
   
 instance PdfObject PDFRect where
- toPDF (PDFRect a b c d) = toPDF . map (AnyPdfObject . PDFInteger) $ [a,b,c,d]
+ toPDF (PDFRect a b c d) = toPDF . map AnyPdfObject $ [a,b,c,d]
  
 instance PdfLengthInfo PDFRect where
 
@@ -250,11 +332,11 @@ data PDFReferencedObject a = PDFReferencedObject !Int !a
 instance PdfObject a => PdfObject (PDFReferencedObject a) where
   toPDF (PDFReferencedObject referenceId obj) =
     mconcat  $ [ serialize . show $ referenceId
-               , serialize " 0 obj"
+               , serialize (" 0 obj" :: String)
                , newline
                , toPDF obj
                , newline
-               , serialize "endobj"
+               , serialize ("endobj" :: String)
                , newline , newline
                ]
 
@@ -278,7 +360,7 @@ instance PdfObject s => Num (PDFReference s) where
 
 instance PdfObject s => PdfObject (PDFReference s) where
   toPDF (PDFReference i) = mconcat $ [ serialize . show $ i
-                                     , serialize " 0 R"]
+                                     , serialize (" 0 R" :: String)]
                                       
                                    
 instance PdfObject s => PdfLengthInfo (PDFReference s) where
@@ -296,3 +378,17 @@ modifyStrict f = do
   	
 -- | A monad where paths can be created
 class MonadWriter Builder m => MonadPath m
+
+{-
+
+Font types
+
+-}
+
+data EmbeddedFont 
+
+
+instance PdfObject EmbeddedFont where
+  toPDF _ = noPdfObject
+
+instance PdfLengthInfo EmbeddedFont where

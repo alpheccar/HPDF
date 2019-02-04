@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -24,6 +24,7 @@ module Graphics.PDF.Typesetting.Box (
   , DrawBox
   , ComparableStyle(..)
   , mkDrawBox
+  , styleFont
  ) where
      
 import Graphics.PDF.LowLevel.Types
@@ -31,6 +32,7 @@ import Graphics.PDF.Draw
 import Graphics.PDF.Text
 import Graphics.PDF.Shapes
 import Graphics.PDF.Coordinates
+import Graphics.PDF.Fonts.Font
 
 -- | Make a drawing box. A box object containing a Draw value
 mkDrawBox :: Draw () -> DrawBox
@@ -84,11 +86,14 @@ class ComparableStyle a => Style a where
     sentenceStyle :: a -- ^ The style
                   -> Maybe (Rectangle -> Draw b -> Draw ()) -- ^ Function receiving the bounding rectangle and the command for drawing the sentence
     sentenceStyle _ = Nothing
+
     -- ^ Modify the look of a word
     wordStyle :: a -- ^ The style
               -> Maybe (Rectangle -> StyleFunction -> Draw b -> Draw ()) -- ^ Word styling function
     wordStyle _ = Nothing
+    
     textStyle :: a -> TextStyle
+
     -- | A style may contain data changed from word to word
     updateStyle :: a -> a
     updateStyle = id
@@ -106,8 +111,20 @@ class ComparableStyle a => Style a where
     -- > styleDescent = getDescent . textFont . textStyle
     --
     styleDescent :: a -> PDFFloat
-    styleHeight = getHeight . textFont . textStyle 
-    styleDescent = getDescent . textFont . textStyle 
+    styleHeight a = 
+      let PDFFont f s = textFont . textStyle $ a in
+      getHeight f s
+    styleDescent a =       
+      let PDFFont f s = textFont . textStyle $ a in
+      getDescent f s
+
+
+styleFont :: Style s => s -> AnyFont 
+styleFont style = 
+  let PDFFont n _ = textFont . textStyle $ style 
+  in 
+  n
+
 
 -- | A box is an object with dimensions and used in the typesetting process
 class Box a where

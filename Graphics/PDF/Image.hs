@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -21,16 +21,18 @@ module Graphics.PDF.Image(
      PDFJpeg
    , JpegFile
    , RawImage
+   , PDFFilter(..)
    -- ** Functions
    , createPDFJpeg
    , readJpegFile
    , jpegBounds
-   , createPDFRawImage
    , readJpegDataURL
+   , createPDFRawImageFromARGB
+   , createPDFRawImageFromByteString
  ) where
      
 import Graphics.PDF.LowLevel.Types
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Graphics.PDF.Draw
 import Graphics.PDF.Resources
 import Graphics.PDF.Pages
@@ -59,6 +61,18 @@ import Data.ByteString.Base64(decode)
 import Control.Applicative
 #endif
 import Control.Error.Util (note)
+
+-- | A Jpeg file   
+data JpegFile = JpegFile !Int !Int !Int !Int !Builder
+
+data PDFFilter = ASCIIHexDecode
+               | ASCII85Decode
+               | LZWDecode
+               | FlateDecode
+               | RunLengthDecode
+               | CCITTFaxDecode
+               | DCTDecode 
+               | NoFilter
 
 m_sof0 :: Int
 m_sof0 = 0xc0 
@@ -246,7 +260,7 @@ parseJpegContent h = do
                io $ hSeek h RelativeSeek (fromIntegral (l-2))
                parseJpegContent h
 
-analyzeJpeg :: Handle -> FA (Int,PDFFloat,PDFFloat,Int)
+analyzeJpeg :: Handle -> FA (Int,Int,Int,Int)
 analyzeJpeg h = do
     -- Get Length
     io $ hSeek h SeekFromEnd 0
@@ -270,7 +284,7 @@ analyzeJpeg h = do
     --io $ print color_space
     --io $ hClose h
     unless (color_space `elem` [1,3,4]) $ EXC.throwError "Color space not supported"
-    return (bits_per_component,(fromIntegral height),(fromIntegral width),color_space)
+    return (bits_per_component,height,width,color_space)
     
 --test = analyzePng "Test/logo.png"
     
@@ -293,7 +307,7 @@ readJpegFile f = (do
          Left s -> return $ Left s) `E.catch` (\(err :: IOException) -> return $ Left (show err)) 
 
 -- | Get the JPEG bounds
-jpegBounds :: JpegFile -> (PDFFloat,PDFFloat)
+jpegBounds :: JpegFile -> (Int,Int)
 jpegBounds (JpegFile _ w h _ _) = (w,h)
 
 -- | Use an abstract description of a Jpeg to return a PDFReference that can be used to manipulate the Jpeg in the context
@@ -302,7 +316,7 @@ createPDFJpeg :: JpegFile
               -> PDF (PDFReference PDFJpeg)
 createPDFJpeg (JpegFile bits_per_component width height color_space img) = do
         PDFReference s <- createContent a' Nothing  
-        recordBound s width height
+        recordBound s (fromIntegral width) (fromIntegral height)
         return (PDFReference s) 
     where
        color c = case c of
@@ -316,8 +330,8 @@ createPDFJpeg (JpegFile bits_per_component width height color_space img) = do
                  do modifyStrict $ \s -> s  {otherRsrcs = PDFDictionary. M.fromList $ 
                                                    [ (PDFName "Type",AnyPdfObject . PDFName $ "XObject")
                                                    , (PDFName "Subtype",AnyPdfObject . PDFName $ "Image")
-                                                   , (PDFName "Width",AnyPdfObject . PDFInteger $ round width)
-                                                   , (PDFName "Height",AnyPdfObject . PDFInteger $ round height)
+                                                   , (PDFName "Width",AnyPdfObject . PDFInteger $ width)
+                                                   , (PDFName "Height",AnyPdfObject . PDFInteger $ height)
                                                    , (PDFName "BitsPerComponent",AnyPdfObject . PDFInteger $ bits_per_component)
                                                    , (PDFName "Interpolate", AnyPdfObject True)
                                                    , (PDFName "Filter",AnyPdfObject . PDFName $ "DCTDecode")
@@ -325,14 +339,48 @@ createPDFJpeg (JpegFile bits_per_component width height color_space img) = do
                                              }
                     tell img        
         
-createPDFRawImage :: Double -- ^ Width
-                  -> Double -- ^ Height
-                  -> Bool -- ^ Interpolation
-                  -> U.Vector Word32 -- ^ RGBA pixels (A component not used y the PDF document)
-                  -> PDF (PDFReference RawImage)  
-createPDFRawImage width height interpolate stream =  do
+createPDFRawImageFromByteString :: Int -- ^ Width
+                                -> Int -- ^ Height
+                                -> Bool -- ^ Interpolation
+                                -> PDFFilter -- ^ Decompression filter to be sued by the PDF reader to render the picture
+                                -> B.ByteString -- ^ RGB pixels
+                                -> PDF (PDFReference RawImage)  
+createPDFRawImageFromByteString width height interpolate pdfFilter stream =  do
         PDFReference s <- createContent a' Nothing  
-        recordBound s width height
+        recordBound s (fromIntegral width) (fromIntegral height)
+        return (PDFReference s) 
+    where     
+        getFilter = case pdfFilter of 
+                    NoFilter -> []
+                    ASCIIHexDecode -> [(PDFName "Filter",AnyPdfObject . PDFName $ "ASCIIHexDecode")]
+                    ASCII85Decode -> [(PDFName "Filter",AnyPdfObject . PDFName $ "ASCII85Decode")]
+                    LZWDecode -> [(PDFName "Filter",AnyPdfObject . PDFName $ "LZWDecode")]
+                    FlateDecode -> [(PDFName "Filter",AnyPdfObject . PDFName $ "FlateDecode")]
+                    RunLengthDecode -> [(PDFName "Filter",AnyPdfObject . PDFName $ "RunLengthDecode")]
+                    CCITTFaxDecode -> [(PDFName "Filter",AnyPdfObject . PDFName $ "CCITTFaxDecode")]
+                    DCTDecode -> [(PDFName "Filter",AnyPdfObject . PDFName $ "DCTDecode")]
+
+        a' =  do 
+                modifyStrict $ \s -> s  {otherRsrcs = PDFDictionary. M.fromList $ 
+                                                   [ (PDFName "Type",AnyPdfObject . PDFName $ "XObject")
+                                                   , (PDFName "Subtype",AnyPdfObject . PDFName $ "Image")
+                                                   , (PDFName "Width",AnyPdfObject . PDFInteger $ width)
+                                                   , (PDFName "Height",AnyPdfObject . PDFInteger $ height)
+                                                   , (PDFName "BitsPerComponent",AnyPdfObject . PDFInteger $ 8)
+                                                   , (PDFName "ColorSpace",AnyPdfObject $ PDFName "DeviceRGB")
+                                                   , (PDFName "Interpolate", AnyPdfObject interpolate)
+                                                   ] ++ getFilter
+                                             }
+                tell . fromLazyByteString $ stream
+
+createPDFRawImageFromARGB :: Int -- ^ Width
+                          -> Int -- ^ Height
+                          -> Bool -- ^ Interpolation
+                          -> U.Vector Word32 -- ^ ARGB pixels (A component not used y the PDF document)
+                          -> PDF (PDFReference RawImage)  
+createPDFRawImageFromARGB width height interpolate stream =  do
+        PDFReference s <- createContent a' Nothing  
+        recordBound s (fromIntegral width) (fromIntegral height)
         return (PDFReference s) 
     where
         addPixel (a:t) =  
@@ -347,8 +395,8 @@ createPDFRawImage width height interpolate stream =  do
                 modifyStrict $ \s -> s  {otherRsrcs = PDFDictionary. M.fromList $ 
                                                    [ (PDFName "Type",AnyPdfObject . PDFName $ "XObject")
                                                    , (PDFName "Subtype",AnyPdfObject . PDFName $ "Image")
-                                                   , (PDFName "Width",AnyPdfObject . PDFInteger $ round width)
-                                                   , (PDFName "Height",AnyPdfObject . PDFInteger $ round height)
+                                                   , (PDFName "Width",AnyPdfObject . PDFInteger $  width)
+                                                   , (PDFName "Height",AnyPdfObject . PDFInteger $  height)
                                                    , (PDFName "BitsPerComponent",AnyPdfObject . PDFInteger $ 8)
                                                    , (PDFName "ColorSpace",AnyPdfObject $ PDFName "DeviceRGB")
                                                    , (PDFName "Interpolate", AnyPdfObject interpolate)
@@ -372,18 +420,18 @@ sReadWord16 bs idx = do
   lo <- sReadWord8 bs (idx + 1)
   return $ (hi `shiftL` 8) .|. lo
 
-parseJpegDetailData :: C8.ByteString -> Int -> Maybe (Int,PDFFloat,PDFFloat,Int)
+parseJpegDetailData :: C8.ByteString -> Int -> Maybe (Int,Int,Int,Int)
 parseJpegDetailData bs offset = do
   bpc <- sReadWord8  bs (offset + 4)
   hgt <- sReadWord16 bs (offset + 5)
   wdt <- sReadWord16 bs (offset + 7)
   cls <- sReadWord8  bs (offset + 9)
-  return (bpc, fromIntegral hgt, fromIntegral wdt, cls)
+  return (bpc, hgt, wdt, cls)
 
 (?|) :: Maybe b -> a -> Either a b
 (?|) = flip note
 
-parseJpegContentData :: C8.ByteString -> Int -> Either String (Int,PDFFloat,PDFFloat,Int)
+parseJpegContentData :: C8.ByteString -> Int -> Either String (Int,Int,Int,Int)
 parseJpegContentData bs offset = do
   r <- sReadWord8 bs offset ?| "Corrupt JPEG data URL - no marker found"
   guard (r == 0x0FF) ?| "Corrupt JPEG data URL - no marker found"
@@ -396,12 +444,12 @@ parseJpegContentData bs offset = do
           l <- (sReadWord16 bs (offset + 2)) ?| "Corrupt JPEG data URL - insufficient data in URL"
           parseJpegContentData bs (offset + l + 2)
 
-checkColorSpace :: (Int,PDFFloat,PDFFloat,Int) -> Either String (Int,PDFFloat,PDFFloat,Int)
+checkColorSpace :: (Int,Int,Int,Int) -> Either String (Int,Int,Int,Int)
 checkColorSpace hdrData@(_,_,_,color_space) = do
   guard (color_space `elem` [1,3,4]) ?| ("Color space [" ++ show color_space ++ "] not supported")
   return hdrData
 
-analyzeJpegData :: C8.ByteString -> Either String (Int,PDFFloat,PDFFloat,Int)
+analyzeJpegData :: C8.ByteString -> Either String (Int,Int,Int,Int)
 analyzeJpegData bs = do
   header <- sReadWord16 bs 0 ?| "Not a JPEG data URL - no marker found"
   guard (header == 0x0FFD8) ?| "Not a JPEG data URL - invalid JPEG marker" 
@@ -423,8 +471,7 @@ readJpegDataURL dataurl = do
   guard (take 23 dataurl == "data:image/jpeg;base64,") ?| "Data URL does not start with a valid JPEG header"
   readJpegData $ drop 23 dataurl   
 
--- | A Jpeg file   
-data JpegFile = JpegFile !Int !PDFFloat !PDFFloat !Int !Builder
+
      
 -- | A Jpeg PDF object
 data PDFJpeg

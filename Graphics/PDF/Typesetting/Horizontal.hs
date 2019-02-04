@@ -1,6 +1,6 @@
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -26,7 +26,7 @@ import Graphics.PDF.Typesetting.Breaking
 import Graphics.PDF.Shapes
 import Graphics.PDF.Draw
 import Graphics.PDF.Coordinates
-import qualified Data.ByteString.Char8 as S(pack)
+import qualified Data.ByteString as S(reverse,cons,singleton)
 import Data.Maybe(isJust,fromJust)
 import Data.List(foldl')
 import Graphics.PDF.Colors
@@ -35,16 +35,17 @@ import Graphics.PDF.Typesetting.Box
 import Control.Monad.Writer(tell)
 import Control.Monad(when)
 import Graphics.PDF.LowLevel.Serializer
+import Graphics.PDF.Fonts.Font(AnyFont)
 
 -- | Current word (created from letter) is converted to a PDFString
-saveCurrentword :: String -> PDFString
-saveCurrentword = PDFString . S.pack . reverse
+saveCurrentword :: PDFGlyph -> PDFGlyph
+saveCurrentword (PDFGlyph g) = PDFGlyph . S.reverse $ g
 
 -- WARNING
 -- According to splitText, PDFText to concatenate ARE letters so we can optimize the code
 -- Sentences are created when no word style is present, otherwise we just create words
 createWords :: ComparableStyle s => PDFFloat -- ^ Adjustement ratio
-            -> Maybe (s,String, PDFFloat) -- ^ Current word
+            -> Maybe (s,PDFGlyph, PDFFloat) -- ^ Current word
             -> [Letter s] -- ^ List of letters
             -> [HBox s] -- ^ List of words or sentences
 
@@ -53,10 +54,10 @@ createWords _ Nothing [] = []
 createWords _ (Just (s,t,w)) [] = [createText s (saveCurrentword t) w]
 
 -- Start of a new word
-createWords r Nothing ((AChar s t w):l) = createWords r (Just (s,[t],w)) l
+createWords r Nothing ((AGlyph s t w):l) = createWords r (Just (s,PDFGlyph (S.singleton (fromIntegral t)),w)) l
 -- New letter. Same style added to the word. Otherwise we start a new word
-createWords r (Just (s,t,w)) ((AChar s' t' w'):l) | s `isSameStyleAs` s' = createWords r (Just (s,t':t,w+w')) l
-                                                  | otherwise = (createText s (saveCurrentword $ t) w):createWords r (Just (s',[t'],w')) l 
+createWords r (Just (s,PDFGlyph t,w)) ((AGlyph s' t' w'):l) | s `isSameStyleAs` s' = createWords r (Just (s,PDFGlyph (S.cons (fromIntegral t') t),w+w')) l
+                                                            | otherwise = (createText s (saveCurrentword $ (PDFGlyph t)) w):createWords r (Just (s',PDFGlyph (S.singleton (fromIntegral t')),w')) l 
                                                              
 -- Glue close the word and start a new one because we want glues of different widths in the PDF
 createWords r (Just (s,t,w)) ((Glue w' y z (Just s')):l) = (createText s (saveCurrentword $ t) w):(HGlue w' (Just(y,z)) (Just s')):createWords r  Nothing l
@@ -77,7 +78,8 @@ createWords r (Just (s,t,w)) ((Letter d a st):l) = (createText s (saveCurrentwor
  
 
 -- | horizontalPostProcess
-horizontalPostProcess :: (Style s) => [(PDFFloat,[Letter s],[Letter s])] -- ^ adjust ratio, hyphen style, list of letters or boxes
+horizontalPostProcess :: (Style s) 
+                      => [(PDFFloat,[Letter s],[Letter s])] -- ^ adjust ratio, hyphen style, list of letters or boxes
                       -> [(HBox s,[Letter s])] -- ^ List of lines
 horizontalPostProcess [] = []
 horizontalPostProcess ((r,l',r'):l) = let l'' = createWords r Nothing . simplify $ l' in
@@ -94,7 +96,7 @@ horizontalPostProcess ((r,l',r'):l) = let l'' = createWords r Nothing . simplify
 -- Otherwise, HBox cannot dilate or compress. 
 data HBox s = HBox !PDFFloat !PDFFloat !PDFFloat ![HBox s]
             | HGlue !PDFFloat !(Maybe (PDFFloat,PDFFloat)) !(Maybe s)
-            | Text !s !PDFString !PDFFloat
+            | Text !s !PDFGlyph !PDFFloat
             | SomeHBox !BoxDimension !AnyBox !(Maybe s)
      
 -- | Change the style of the box      
@@ -134,7 +136,7 @@ instance Style s => MaybeGlue (HBox s) where
     
 -- | Create an HBox           
 createText :: s -- ^ Style
-           -> PDFString -- ^ String
+           -> PDFGlyph -- ^ List of glyphs
            -> PDFFloat -- ^ Width
            -> HBox s
 createText s t w = Text s t w
@@ -145,6 +147,7 @@ instance Show (HBox s) where
    show (HGlue a _ _) = "(HGlue " ++ show a ++ ")"
    show (Text _ t _) = "(Text " ++ show t ++ ")"
    show (SomeHBox _ t _) = "(SomeHBox " ++ show t ++ ")"
+
 
 -- | Draw a line of words and glue using the word style
 drawTextLine :: (Style s) => s -> [HBox s] -> PDFFloat -> PDFFloat -> Draw ()
@@ -263,7 +266,7 @@ drawTheTextBox :: Style style => TextDrawingState
                -> style
                -> PDFFloat
                -> PDFFloat
-               -> Maybe PDFString
+               -> Maybe PDFGlyph
                -> PDFText ()
 drawTheTextBox state style x y t = do
   when (state == StartText || state == OneBlock) $ (do
@@ -285,11 +288,12 @@ drawTheTextBox state style x y t = do
       tell $ serialize " TJ")
       
 -- | Draw the additional displacement required for a space in a text due to the dilaton of the glue
-drawTextGlue :: Style style => style
+drawTextGlue :: Style style 
+             => style
              -> PDFFloat
              -> PDFText ()
 drawTextGlue style w = do              
-    let ws = (textWidth (textFont . textStyle $ style) (toPDFString " "))
+    let ws = spaceWidth style
         PDFFont _ size = textFont . textStyle $ style
         delta = w - ws 
     return ()
@@ -324,13 +328,14 @@ instance (Style s) => DisplayableBox (HBox s) where
          let de = boxDescent a
              he = boxHeight a
              y' = y - he + de
+             theFont = styleFont style
          -- In word mode we have to apply a special function to the word
          -- otherwise we apply a different function to the sentence
          if (isJust . wordStyle $ style)
              then
                  (fromJust . wordStyle $ style) (Rectangle (x :+ (y' - de)) ((x+w) :+ (y' - de + he))) DrawWord (drawText $ drawTheTextBox OneBlock style x y' (Just t))
              else 
-                 drawText $ drawTheTextBox OneBlock style x y' (Just t)
+                 drawText  $ drawTheTextBox OneBlock style x y' (Just t)
 
      strokeBox (SomeHBox _ a _) x y = strokeBox a x y
      strokeBox (HGlue _ _ _) _ _ = return ()

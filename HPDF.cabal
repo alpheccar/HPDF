@@ -1,21 +1,18 @@
 Name: HPDF
-Version: 1.4.8
+Version: 1.5.0
 cabal-version: >=1.10
 License: BSD3
 License-file:LICENSE
-Copyright: Copyright (c) 2007-2015, alpheccar.org
+Copyright: Copyright (c) 2007-2016, alpheccar.org
 category: Graphics
 synopsis: Generation of PDF documents
 maintainer: misc@NOSPAMalpheccar.org
 build-type: Simple
-tested-with: GHC==7.8.4,GHC==7.10.2
+tested-with: GHC==7.10.2
 homepage: http://www.alpheccar.org
 description: A PDF library with support for several pages, page transitions, outlines, annotations, compression, colors, shapes, patterns, jpegs, fonts, typesetting ... Have a look at the "Graphics.PDF.Documentation" module to see how to use it. Or, download the package and look at the test.hs file in the Test folder. That file is giving an example of each feature.
 extra-source-files:
-  c/ctext.h
-  c/metrics.h
   c/conversion.h
-  Test/AFMParser.hs
   Test/logo.jpg
   Test/Makefile
   Test/Penrose.hs
@@ -23,7 +20,27 @@ extra-source-files:
   README.txt
   NEWS.txt
   TODO.txt
-  changelog.md
+  changelog
+data-files:
+  Core14_AFMs/Courier-Bold.afm
+  Core14_AFMs/Helvetica-BoldOblique.afm
+  Core14_AFMs/Times-Bold.afm
+  Core14_AFMs/Courier-BoldOblique.afm
+  Core14_AFMs/Helvetica-Oblique.afm 
+  Core14_AFMs/Times-BoldItalic.afm
+  Core14_AFMs/Courier-Oblique.afm
+  Core14_AFMs/Helvetica.afm
+  Core14_AFMs/Times-Italic.afm
+  Core14_AFMs/Courier.afm
+  Core14_AFMs/MustRead.html 
+  Core14_AFMs/Times-Roman.afm
+  Core14_AFMs/Helvetica-Bold.afm
+  Core14_AFMs/Symbol.afm
+  Core14_AFMs/ZapfDingbats.afm
+  Encodings/glyphlist.txt
+  Encodings/zapfdingbats.txt
+  Encodings/pdfencodings.txt
+  Test/logo.jpg
 
 source-repository head
   type:     git
@@ -38,6 +55,22 @@ Test-Suite HPDF-Tests
                      HPDF
   Default-language:  Haskell2010
   
+Executable HPDF-Demo
+  Main-is:           test.hs
+  hs-source-dirs:    Test
+  Build-depends:     base >= 4, 
+                     HPDF,
+                     random >= 1.0, 
+                     text >= 1.2.0,
+                     network-uri >= 2.6.0.3,
+                     vector >=0.10,
+                     filepath >= 1.4.0
+
+  Default-language:  Haskell2010
+  Other-Modules:
+    Paths_HPDF
+    Penrose
+
 library
   build-depends: 
       base >= 4 && < 5, 
@@ -50,16 +83,19 @@ library
       mtl,
       vector >=0.10,
       errors,
-      base64-bytestring >= 0.1
-  
+      base64-bytestring >= 0.1,
+      text >= 1.2.0,
+      network-uri >= 2.6.0.3,
+      parsec >=3.1.9,
+      filepath >= 1.4.0
+  Default-language:  Haskell2010
+
   ghc-options: -Wall -fno-warn-tabs -funbox-strict-fields  -O2
 
   C-Sources:  
-     c/metrics.c
      c/conversion.c
   Include-Dirs: c
   Install-Includes: 
-     ctext.h
      conversion.h
   exposed-Modules: 
      Graphics.PDF
@@ -68,6 +104,10 @@ library
      Graphics.PDF.Document
      Graphics.PDF.Shapes
      Graphics.PDF.Text
+     Graphics.PDF.Fonts.Font
+     Graphics.PDF.Fonts.StandardFont
+     Graphics.PDF.Fonts.Type1
+     Graphics.PDF.Typesetting.WritingSystem
      Graphics.PDF.Navigation
      Graphics.PDF.Image
      Graphics.PDF.Action
@@ -77,8 +117,10 @@ library
      Graphics.PDF.Typesetting
      Graphics.PDF.Hyphenate
      Graphics.PDF.Documentation
+     Paths_HPDF
   Other-Modules:
      Graphics.PDF.LowLevel.Types
+     Graphics.PDF.Fonts.FontTypes
      Graphics.PDF.Data.PDFTree
      Graphics.PDF.Data.Trie
      Graphics.PDF.Pages
@@ -86,7 +128,6 @@ library
      Graphics.PDF.Draw
      Graphics.PDF.Hyphenate.English
      Graphics.PDF.Hyphenate.LowLevel
-     Graphics.PDF.LowLevel.Kern
      Graphics.PDF.Typesetting.Breaking
      Graphics.PDF.Typesetting.Horizontal
      Graphics.PDF.Typesetting.Vertical
@@ -94,3 +135,6 @@ library
      Graphics.PDF.Typesetting.Layout
      Graphics.PDF.LowLevel.Serializer
      Graphics.PDF.Typesetting.StandardStyle
+     Graphics.PDF.Fonts.AFMParser
+     Graphics.PDF.Fonts.Encoding
+

@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -19,8 +19,6 @@ module Graphics.PDF.Resources(
  , StrokeAlpha(..)
  , FillAlpha(..)
  , PdfResourceObject(..)
- , PDFFont(..)
- , FontName(..)
  , resourceToDict
  , emptyResource
  , PDFColoredPattern
@@ -30,53 +28,10 @@ module Graphics.PDF.Resources(
  ) where
      
 import Graphics.PDF.LowLevel.Types
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 
--- Fonts
-type FontSize = Int
-data FontName = Helvetica 
-              | Helvetica_Bold
-              | Helvetica_Oblique
-              | Helvetica_BoldOblique
-              | Times_Roman 
-              | Times_Bold
-              | Times_Italic
-              | Times_BoldItalic
-              | Courier
-              | Courier_Bold
-              | Courier_Oblique
-              | Courier_BoldOblique
-              | Symbol
-              | ZapfDingbats
-              deriving(Eq,Ord,Enum)
 
-instance Show FontName where
-    show Helvetica = "Helvetica"
-    show Helvetica_Bold = "Helvetica-Bold"
-    show Helvetica_Oblique = "Helvetica-Oblique"
-    show Helvetica_BoldOblique = "Helvetica-BoldOblique"
-    show Times_Roman = "Times-Roman"
-    show Times_Bold = "Times-Bold"
-    show Times_Italic = "Times-Italic"
-    show Times_BoldItalic = "Times-BoldItalic"
-    show Courier = "Courier"
-    show Courier_Bold = "Courier-Bold"
-    show Courier_Oblique = "Courier-Oblique"
-    show Courier_BoldOblique = "Courier-BoldOblique"
-    show Symbol = "Symbol"
-    show ZapfDingbats = "ZapfDingbats"
 
-data PDFFont = PDFFont FontName FontSize deriving(Eq,Show)
-
-instance Ord PDFFont where
-    compare (PDFFont na sa) (PDFFont nb sb) = if sa == sb then compare na nb else compare sa sb
-
-instance PdfResourceObject PDFFont where
-   toRsrc (PDFFont f _) =  AnyPdfObject . PDFDictionary . M.fromList $
-                           [(PDFName "Type",AnyPdfObject . PDFName $ "Font")
-                           , (PDFName "Subtype",AnyPdfObject . PDFName $ "Type1")
-                           , (PDFName "BaseFont",AnyPdfObject . PDFName $ show f)
-                           , (PDFName "Encoding",AnyPdfObject . PDFName $ "WinAnsiEncoding")]
       
 newtype StrokeAlpha = StrokeAlpha Double deriving(Eq,Ord)  
 instance PdfResourceObject StrokeAlpha where

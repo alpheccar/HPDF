@@ -6,7 +6,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -42,6 +42,7 @@ module Graphics.PDF.Typesetting(
   -- * Functions
   -- ** Text display
   , displayFormattedText
+  , styleFont
   -- ** Text construction operators
   , txt
   , kern
@@ -56,6 +57,8 @@ module Graphics.PDF.Typesetting(
   -- ** Functions useful to change the paragraph style
   , getParaStyle
   , setParaStyle
+  , getWritingSystem 
+  , setWritingSystem
   -- ** Container
   , mkContainer
   , fillContainer
@@ -106,12 +109,10 @@ import Graphics.PDF.Typesetting.Vertical
 import Graphics.PDF.Typesetting.Layout
 import Graphics.PDF.Typesetting.Box
 import Graphics.PDF.Typesetting.StandardStyle
-import Graphics.PDF.Hyphenate
+import Graphics.PDF.Typesetting.WritingSystem
 import Data.List(unfoldr,intersperse)
 import Data.Char(isSpace,isAlpha)
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative
-#endif
+import qualified Data.Text as T
 
 -- | Display a formatted text in a given bounding rectangle with a given default paragraph style, a given default text style. No clipping
 -- is taking place. Drawing stop when the last line is crossing the bounding rectangle in vertical direction
@@ -308,6 +309,16 @@ runPara m = do
         endPara
         return x
     
+-- | Get the current writing system for the paragraph 
+getWritingSystem :: TM ps s WritingSystem 
+getWritingSystem = do 
+  s <- gets paraSettings 
+  return (writingSystem s)
+
+setWritingSystem :: WritingSystem -> TM ps s () 
+setWritingSystem w = do 
+  modifyStrict $ \s -> s {paraSettings = (paraSettings s){writingSystem = w}}
+
 -- | Get the current paragraph style
 getParaStyle :: TM ps s ps
 getParaStyle = gets pageSettings >>= TM . return . currentParagraphStyle
@@ -329,33 +340,15 @@ paragraph = runPara
 --nullChar :: Para ()
 --nullChar = Para . tell $ [nullLetter]
 
-myWords' :: String -> Maybe (String, String)
-myWords' l  | null l = Nothing
-            | otherwise = if null h then Just (h', t') else Just (" ", t)
-    where 
-        (h, t) = span isSpace l
-        (h', t') = span (not . isSpace) l
-   
--- | Split a sentence into words keeping the space but shortening them to 1 space
-myWords :: String -> [String]     
-myWords l = concatMap onlyWord . unfoldr myWords' $ l 
- where
-  onlyWord s = let (w,p) = span isAlpha s in
-     case (null w,null p) of
-         (True,True) -> []
-         (False,True) -> [w]
-         (True,False) -> [p]
-         (False,False) -> [w,p]
-    
-addHyphens :: HyphenationDatabase -> String -> PDFString
-addHyphens db f = toPDFString . concat . map (concat . intersperse "/-" . hyphenate db) . myWords $ f
-    
+  
+
+        
 -- | Add a text line
-txt :: Style s => String -> Para s ()
+txt :: Style s => T.Text -> Para s ()
 txt t = do
     f <- currentStyle
     settings <- ask
-    tell $ splitText settings f (addHyphens (hyphenation settings) t)
+    tell $ splitText settings f t
 
 -- | add a kern (space that can be dilated or compressed and on which no line breaking can occur)
 kern :: Style s => PDFFloat -> Para s ()

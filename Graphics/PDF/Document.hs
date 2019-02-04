@@ -1,6 +1,6 @@
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -51,11 +51,12 @@ import Graphics.PDF.Draw
 import Graphics.PDF.Pages
 import Control.Monad.State
 import qualified Data.IntMap as IM
-import qualified Data.Map as M
-        
+import qualified Data.Map.Strict as M
+import qualified Data.Text as T
+
 -- | No information for the document  
 standardDocInfo :: PDFDocumentInfo          
-standardDocInfo = PDFDocumentInfo (toPDFString "") (toPDFString "") UseNone SinglePage standardViewerPrefs True
+standardDocInfo = PDFDocumentInfo T.empty T.empty UseNone SinglePage standardViewerPrefs True
 
 -- | Create a PDF XObject
 createPDFXForm :: PDFFloat -- ^ Left

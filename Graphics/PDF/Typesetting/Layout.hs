@@ -2,7 +2,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -283,6 +283,7 @@ class (ComparableStyle a, Style s) => ParagraphStyle a s | a -> s where
     paragraphStyle :: a -- ^ The style 
                    -> Maybe (Rectangle -> Draw b -> Draw ()) -- ^ Function used to style a paragraph
     paragraphStyle _ = Nothing
+
 
 -- | Get the delta used to position a box with non rectangular shapes
 getBoxDelta :: VBox ps s -> PDFFloat

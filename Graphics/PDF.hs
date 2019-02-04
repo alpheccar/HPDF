@@ -2,7 +2,7 @@
 {-# LANGUAGE BangPatterns #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -54,6 +54,12 @@ module Graphics.PDF
   , module Graphics.PDF.Pattern
   -- ** Shading
   , module Graphics.PDF.Shading
+  -- ** Fonts
+  , module Graphics.PDF.Fonts.Font 
+  , module Graphics.PDF.Fonts.StandardFont
+  , module Graphics.PDF.Fonts.Type1
+  , readType1Font
+  , mkType1Font
   -- ** Typesetting
   , module Graphics.PDF.Typesetting
   , module Graphics.PDF.Hyphenate
@@ -70,7 +76,7 @@ import Graphics.PDF.Pattern
 import Graphics.PDF.Navigation
 import Graphics.PDF.Text
 import qualified Data.IntMap as IM
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.ByteString.Lazy as B
 import Data.Int
 import Text.Printf(printf)
@@ -90,6 +96,10 @@ import Graphics.PDF.Resources(emptyResource)
 import Data.Binary.Builder(Builder,fromLazyByteString, toLazyByteString)
 import Graphics.PDF.LowLevel.Serializer
 import Data.List(unfoldr)
+import qualified Data.Text as T
+import Graphics.PDF.Fonts.Font 
+import Graphics.PDF.Fonts.StandardFont
+import Graphics.PDF.Fonts.Type1
 
 -- | Create a new PDF document and return a first page
 -- The page is using the document size by default
@@ -190,9 +200,9 @@ instance PdfObject PDFTrailer where
      , (PDFName "Info",AnyPdfObject . PDFDictionary . M.fromList $ allInfos)
      ]
      where
-      allInfos = [ (PDFName "Author",AnyPdfObject . author $ infos)
-                 , (PDFName "Subject",AnyPdfObject . subject $ infos)
-                 , (PDFName "Producer",AnyPdfObject $ toPDFString "HPDF - The Haskell PDF Library" )
+      allInfos = [ (PDFName "Author",AnyPdfObject . toPDFString . author $ infos)
+                 , (PDFName "Subject",AnyPdfObject . toPDFString . subject $ infos)
+                 , (PDFName "Producer",AnyPdfObject $ toPDFString (T.pack "HPDF - The Haskell PDF Library" ))
                  ]
 
 instance PdfLengthInfo PDFTrailer where
@@ -243,7 +253,7 @@ defaultPdfSettings =
            , streams = IM.empty
            , catalog = PDFReference 0
            , defaultRect = PDFRect 0 0 600 400 
-           , docInfo = standardDocInfo { author=toPDFString "Unknown", compressed = True}
+           , docInfo = standardDocInfo { author=T.pack "Unknown", compressed = True}
            , outline = Nothing
            , currentPage = Nothing
            , xobjectBound = IM.empty
@@ -293,10 +303,8 @@ createObjectByteStrings pdfState m =
 pdfByteString :: PDFDocumentInfo
               -> PDFRect -- ^ Default size for a page
               -> PDF a  -- ^ PDF action 
-              -> IO (B.ByteString) 
-pdfByteString infos rect m = do 
-    let content = createObjectByteStrings (defaultPdfSettings {defaultRect = rect, docInfo = infos} ) m
-    return content
+              -> B.ByteString
+pdfByteString infos rect m = createObjectByteStrings (defaultPdfSettings {defaultRect = rect, docInfo = infos} ) m
 
 -- | Generates a PDF document
 runPdf :: String -- ^ Name of the PDF document
@@ -305,7 +313,7 @@ runPdf :: String -- ^ Name of the PDF document
        -> PDF a  -- ^ PDF action 
        -> IO ()
 runPdf filename infos rect m = do
-  bytestring <- pdfByteString infos rect m 
+  let bytestring = pdfByteString infos rect m 
   B.writeFile filename bytestring
 
 

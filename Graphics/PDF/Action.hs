@@ -1,6 +1,6 @@
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -19,7 +19,8 @@ module Graphics.PDF.Action(
  ) where
      
 import Graphics.PDF.LowLevel.Types
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
+import Network.URI 
 
 
 --  Media action
@@ -32,7 +33,7 @@ import qualified Data.Map as M
 class PdfObject a => Action a
 
 -- | Action of going to an URL
-newtype GoToURL = GoToURL String
+newtype GoToURL = GoToURL URI
 
 --data Rendition = Rendition
 --instance PdfObject Rendition where
@@ -52,11 +53,18 @@ newtype GoToURL = GoToURL String
 --  Action to control a media
 --data ControlMedia = ControlMedia MediaAction Int (PDFReference Rendition)
     
+urlToPdfString :: URI -> AsciiString 
+urlToPdfString uri = 
+    let s = uriToString id uri "" 
+    in
+    toAsciiString s
+
+
 instance PdfObject GoToURL where
     toPDF (GoToURL s) = toPDF . PDFDictionary . M.fromList $
                          [ (PDFName "Type",AnyPdfObject . PDFName $ "Action")
                          , (PDFName "S",AnyPdfObject (PDFName "URI"))
-                         , (PDFName "URI",AnyPdfObject (toPDFString s))
+                         , (PDFName "URI",AnyPdfObject (urlToPdfString s))
                          ]
 instance Action GoToURL
 

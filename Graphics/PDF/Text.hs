@@ -1,10 +1,9 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveFunctor #-}
 ---------------------------------------------------------
 -- |
--- Copyright   : (c) 2006-2012, alpheccar.org
+-- Copyright   : (c) 2006-2016, alpheccar.org
 -- License     : BSD-style
 --
 -- Maintainer  : misc@NOSPAMalpheccar.org
@@ -25,8 +24,8 @@ module Graphics.PDF.Text(
    -- ** Functions
    , drawText
    , text
-   , toPDFString
    , startNewLine
+   , displayGlyphs
    , displayText
    , textStart
    , setFont
@@ -38,10 +37,8 @@ module Graphics.PDF.Text(
    , rise
    , setTextMatrix
    , textWidth
-   , getDescent
-   , getHeight
-   , ripText
-   , charWidth
+   , pdfGlyph
+   , glyph
  ) where
 
 import Graphics.PDF.LowLevel.Types
@@ -50,79 +47,33 @@ import Control.Monad.State
 import Graphics.PDF.Resources
 import Control.Monad.Writer
 import qualified Data.Set as Set
-import Data.Word
-import Graphics.PDF.LowLevel.Kern(kerns)
-import qualified Data.Map as M(findWithDefault)
 import Data.List(foldl')
 import Data.Binary.Builder(Builder)
 import Graphics.PDF.LowLevel.Serializer
 import qualified Data.ByteString as S
-#if __GLASGOW_HASKELL__ >= 608
-import Data.ByteString.Internal(w2c,c2w)
-#else
-import Data.ByteString.Base(w2c,c2w)
-#endif
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative
-#endif
+import qualified Data.Text as T
+import Graphics.PDF.Fonts.Font
+import Graphics.PDF.Fonts.StandardFont
 
-foreign import ccall "ctext.h c_getLeading" cgetLeading :: Int -> Int
-foreign import ccall "ctext.h c_getAdvance" cgetAdvance :: Int -> Int -> Int
-foreign import ccall "ctext.h c_getDescent" cgetDescent :: Int -> Int
-foreign import ccall "ctext.h c_hasKern" hasKern :: Int -> Bool
 
--- pixel size / 2048 gives factor 
-
--- | Convert a dimension in font unit to device unit
-trueSize :: Int -> Int -> PDFFloat
-trueSize fontSize textSize = (fromIntegral (textSize*fontSize)) / 1000.0
-
-getDescent :: PDFFont -> PDFFloat
-getDescent (PDFFont n s) = trueSize s (cgetDescent (fromEnum n))
-
-getHeight :: PDFFont -> PDFFloat
-getHeight (PDFFont n s) = trueSize s (cgetLeading (fromEnum n))
-
--- | Get the kern value for a given font and pair of charcode
-getKern :: (Int,Word8,Word8) -> Int
-getKern k = M.findWithDefault 0 k kerns
-
-textWidth :: PDFFont -> PDFString -> PDFFloat
-textWidth (PDFFont n s) (PDFString t) = 
- let w = foldl' (\a b -> a + cgetAdvance (fromEnum n) (fromIntegral b)) 0 . S.unpack $ t
+glyphStreamWidth :: PDFFont
+                 -> PDFGlyph 
+                 -> PDFFloat
+glyphStreamWidth (PDFFont f s) (PDFGlyph t) = 
+ let w = foldl' (\a b -> a + glyphWidth f s (fromIntegral b)) 0 . S.unpack $ t
  in
- if hasKern (fromEnum n)
-   then
-      trueSize s (w + (foldl' (\a b -> a + getKern b) 0 $ [(fromEnum n,ca,cb) | (ca,cb) <- S.zip t (S.tail t)]))
-   else
-      trueSize s w
+  w + (foldl' (\a (x,y) -> a + getKern f s x y) 0 $ [(GlyphCode ca,GlyphCode cb) | (ca,cb) <- S.zip t (S.tail t)])
+
+textWidth :: PDFFont -> T.Text -> PDFFloat
+textWidth f t = glyphStreamWidth f . pdfGlyph f $ t
       
-charWidth :: PDFFont -> Char -> PDFFloat
-charWidth (PDFFont n s) c = let w = cgetAdvance (fromEnum n) (fromEnum c) in
-    trueSize s w
-    
-c2i :: Char -> Int
-c2i = fromEnum
-      
-ripText :: PDFFont -- ^ Font
-        -> PDFString -- ^ String
-        -> [(PDFFloat,Char)] -- ^ List of chars and char width taking into account kerning
-ripText (PDFFont n s) (PDFString t) = getLetters (hasKern (fromEnum n)) . S.unpack  $ t
-  where
-      getLetters _ [] = []
-      getLetters _ [a] = [(trueSize s $ cgetAdvance (fromEnum n) (fromEnum a),w2c a)]
-      getLetters False (a:l) = (trueSize s $ cgetAdvance (fromEnum n) (fromEnum a),w2c a) : getLetters False l
-      getLetters True (a:b:c:d:l)  | b == (c2w '/') && c == (c2w '-') = 
-                                       let k = getKern (fromEnum n,a,d)
-                                           kh = getKern (fromEnum n,a,c2w '-')
-                                           hw = cgetAdvance (fromEnum n) (c2i '-') 
-                                       in
-                                       -- We record the hyphen size + an adaptation due to the different kerning with an hyphen
-                                       (trueSize s $ cgetAdvance (fromEnum n) (fromEnum a) + k,w2c a):(0,'/'):(trueSize s $ hw-k+kh,'-'):getLetters True (d:l)
-                                   | otherwise = (trueSize s $ cgetAdvance (fromEnum n) (fromEnum a) + getKern (fromEnum n,a,b),w2c a) : getLetters True (b:c:d:l)
-      getLetters True (a:b:l) = (trueSize s $ cgetAdvance (fromEnum n) (fromEnum a) + getKern (fromEnum n,a,b),w2c a) : getLetters True (b:l)
-          
-type FontState = (Set.Set FontName)
+pdfGlyph :: PDFFont
+         -> T.Text 
+         -> PDFGlyph 
+pdfGlyph (PDFFont f _) t = PDFGlyph . S.pack . map (fromIntegral . charGlyph f) . T.unpack $ t 
+
+
+type FontState = (Set.Set AnyFont)
 
 data TextParameter = TextParameter { tc :: !PDFFloat
                                    , tw :: !PDFFloat
@@ -130,10 +81,10 @@ data TextParameter = TextParameter { tc :: !PDFFloat
                                    , tl :: !PDFFloat
                                    , ts :: !PDFFloat
                                    , fontState :: FontState
-                                   , currentFont :: PDFFont
+                                   , currentFont :: Maybe PDFFont
                                    }
-defaultParameters :: TextParameter
-defaultParameters = TextParameter 0 0 100 0 0 (Set.empty) (PDFFont Times_Roman 12)
+defaultParameters ::  TextParameter
+defaultParameters = TextParameter 0 0 100 0 0 (Set.empty) Nothing
 
      
 -- | The text monad 
@@ -166,9 +117,9 @@ data TextMode = FillText
 -- | Select a font to use
 setFont :: PDFFont -> PDFText ()
 setFont f@(PDFFont n size) = PDFText $ do
-    lift (modifyStrict $ \s -> s {fontState = Set.insert n (fontState s), currentFont = f})
+    lift (modifyStrict $ \s -> s {fontState = Set.insert n (fontState s), currentFont = Just f})
     tell . mconcat$ [ serialize "\n/" 
-                    , serialize (show n)
+                    , serialize (name n)
                     , serialize ' '
                     , toPDF size
                     , serialize " Tf"
@@ -186,8 +137,8 @@ drawText t = do
     tell . serialize $ "\nET"
     return a
  where
-   addFontRsrc f = modifyStrict $ \s ->
-       s { rsrc = addResource (PDFName "Font") (PDFName (show f)) (toRsrc (PDFFont f 0)) (rsrc s)}
+   addFontRsrc font = modifyStrict $ \s ->
+       s { rsrc = addResource (PDFName "Font") (PDFName (name font)) (toRsrc font) (rsrc s)}
    
 -- | Set position for the text beginning
 textStart :: PDFFloat
@@ -201,12 +152,30 @@ textStart x y = tell . mconcat  $ [ serialize '\n'
                                   ]
  --writeCmd $ "\n" ++ (show x) ++ " " ++ (show y) ++ " Td"         
 
--- | Display some text
-displayText :: PDFString
-            -> PDFText ()
-displayText t = do
+
+glyph :: GlyphCode -> PDFGlyph 
+glyph c = PDFGlyph . S.singleton $ (fromIntegral c)
+
+-- | Display glyphs
+displayGlyphs :: PDFGlyph
+              -> PDFText ()
+displayGlyphs t = do
+    tell $ serialize ' '
     tell . toPDF $ t
     tell . serialize $ " Tj"
+
+-- | Display text
+displayText :: T.Text
+            -> PDFText ()
+displayText t = do
+    f <- gets currentFont
+    case f of 
+      Nothing -> return ()
+      Just aFont -> do
+         let g = pdfGlyph aFont t
+         displayGlyphs g
+
+
 --    f <- gets currentFont
 --    let rt = ripText f t
 --    tell . serialize $ '\n'
@@ -301,10 +270,11 @@ setTextMatrix (Matrix a b c d e f) =
 text :: PDFFont
      -> PDFFloat
      -> PDFFloat
-     -> PDFString
+     -> T.Text
      -> PDFText ()
 text f x y t = do
     setFont f
+    let g = pdfGlyph f t
     textStart x y
-    displayText t
+    displayGlyphs g
     
