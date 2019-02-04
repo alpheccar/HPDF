@@ -46,8 +46,8 @@ import Data.List(zip4)
 import Graphics.PDF.Fonts.Font
 import Graphics.PDF.Data.PDFTree(PDFTree,Key)
 import Control.Monad.Writer 
-import Data.Binary.Builder(Builder,fromLazyByteString,fromByteString)
-import Graphics.PDF.Fonts.FontTypes(FontData(..),Type1Font(..))
+import Data.Binary.Builder(fromByteString)
+import Graphics.PDF.Fonts.FontTypes(FontData(..))
 import Graphics.PDF.Fonts.Type1 
 
 -- | Set page annotations

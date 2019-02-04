@@ -35,7 +35,6 @@ import Graphics.PDF.Typesetting.Box
 import Control.Monad.Writer(tell)
 import Control.Monad(when)
 import Graphics.PDF.LowLevel.Serializer
-import Graphics.PDF.Fonts.Font(AnyFont)
 
 -- | Current word (created from letter) is converted to a PDFString
 saveCurrentword :: PDFGlyph -> PDFGlyph
@@ -328,7 +327,6 @@ instance (Style s) => DisplayableBox (HBox s) where
          let de = boxDescent a
              he = boxHeight a
              y' = y - he + de
-             theFont = styleFont style
          -- In word mode we have to apply a special function to the word
          -- otherwise we apply a different function to the sentence
          if (isJust . wordStyle $ style)

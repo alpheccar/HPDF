@@ -20,16 +20,12 @@ module Graphics.PDF.Fonts.Encoding(
     ) where 
 
 import Graphics.PDF.LowLevel.Types
-import Data.Char 
 import qualified Data.Map.Strict as M
-import Graphics.PDF.Fonts.Font
 import System.FilePath 
 import Paths_HPDF
 import qualified Data.ByteString.Char8 as C 
 import Data.Char(digitToInt)
 import Data.Maybe(mapMaybe)
-import qualified Data.Text as T 
-import qualified Data.Text.IO as T 
 
 type PostscriptName = String 
 
@@ -42,10 +38,10 @@ isLine c | not (C.null c) = C.head c /= '#'
          | otherwise = False
 
 from4Hexa :: C.ByteString -> Int 
-from4Hexa a = sum . map (\(x,y) -> x * y) $ zip (map digitToInt . C.unpack $ a)  (map (\x -> 16^x) [3,2,1,0])
+from4Hexa a = sum . map (\(x,y) -> x * y) $ zip (map digitToInt . C.unpack $ a)  (map (\x -> 16^x) ([3,2,1,0] :: [Integer]))
 
 from3Octal:: C.ByteString -> Int 
-from3Octal a = sum . map (\(x,y) -> x * y) $ zip (map digitToInt . C.unpack $ a)  (map (\x -> 8^x) [2,1,0])
+from3Octal a = sum . map (\(x,y) -> x * y) $ zip (map digitToInt . C.unpack $ a)  (map (\x -> 8^x) ([2,1,0] :: [Integer]))
 
 
 toData :: [C.ByteString] -> Maybe (PostscriptName,Char)

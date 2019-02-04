@@ -16,17 +16,16 @@ module Graphics.PDF.Fonts.StandardFont(
       IsFont
     , GlyphSize
     , FontName(..)
-    , StdFont
+    , StdFont(..)
     , mkStdFont
 ) where 
 
 
 import Graphics.PDF.LowLevel.Types
 import Graphics.PDF.Resources
-import Data.Char 
 import qualified Data.Map.Strict as M
 import Graphics.PDF.Fonts.Font
-import Graphics.PDF.Fonts.AFMParser(getFont,parseFont,AFMFont(..))
+import Graphics.PDF.Fonts.AFMParser(getFont)
 import System.FilePath 
 import Graphics.PDF.Fonts.Encoding
 import Graphics.PDF.Fonts.FontTypes
@@ -66,15 +65,18 @@ instance Show FontName where
     show ZapfDingbats = "ZapfDingbats"
 
 
+
+data StdFont = StdFont FontStructure
+
 instance PdfResourceObject StdFont where
    toRsrc (StdFont f) =  AnyPdfObject . PDFDictionary . M.fromList $
                            [(PDFName "Type",AnyPdfObject . PDFName $ "Font")
                            , (PDFName "Subtype",AnyPdfObject . PDFName $ "Type1")
                            , (PDFName "BaseFont",AnyPdfObject . PDFName $ baseFont f)
-                           ] ++ encoding
-          where encoding | baseFont f == show Symbol = [] 
-                         | baseFont f == show ZapfDingbats = []
-                         | otherwise = [(PDFName "Encoding",AnyPdfObject . PDFName $ "MacRomanEncoding")]
+                           ] ++ encoding'
+          where encoding' | baseFont f == show Symbol = [] 
+                          | baseFont f == show ZapfDingbats = []
+                          | otherwise = [(PDFName "Encoding",AnyPdfObject . PDFName $ "MacRomanEncoding")]
 
 instance IsFont StdFont where 
   getDescent (StdFont fs) s = trueSize s $ descent fs 

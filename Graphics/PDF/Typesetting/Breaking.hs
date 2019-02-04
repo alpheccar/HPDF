@@ -635,7 +635,7 @@ ripText :: Style s
         -> BRState
         -> [SpecialChar] -- ^ Special meaning glyph
         -> [Letter s] -- ^ List of chars and char width taking into account kerning
-ripText s settings [] = []
+ripText _ _ [] = []
 ripText s settings (NormalChar ca:BreakingHyphen:NormalChar cb:l) = 
     let PDFFont f fontSize = (textFont . textStyle $ s) 
         ga = charGlyph f ca 

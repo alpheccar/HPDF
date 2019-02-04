@@ -17,8 +17,6 @@ module Graphics.PDF.Fonts.FontTypes(
     , FontStructure(..)
     , GlyphPair(..)
     , FontData(..)
-    , StdFont(..)
-    , Type1Font(..)
     , mkFlags
 	) where
 
@@ -73,10 +71,7 @@ mkFlags fs = bit (fixedPitch fs) 1 .|.
         bit True n = (1 `shiftL` (n-1)) 
         bit False _ = 0
 
-data StdFont = StdFont FontStructure
 
-
-data Type1Font = Type1Font FontStructure (PDFReference EmbeddedFont)
 
 
 data FontData = Type1Data B.ByteString
