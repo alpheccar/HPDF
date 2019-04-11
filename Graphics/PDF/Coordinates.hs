@@ -121,6 +121,6 @@ spiral (x :+ y) = Matrix x y (-y) x 0 0
 
 -- | Scaling matrix          
 scale :: PDFFloat  -- ^ Horizontal scaling
-      -> PDFFloat  -- ^ Horizontal scaling
+      -> PDFFloat  -- ^ Vertical scaling
       -> Matrix
 scale sx sy  = Matrix sx 0 0 sy 0 0
