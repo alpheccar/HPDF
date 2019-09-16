@@ -91,6 +91,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.IntMap as IM
 import qualified Data.Binary.Builder as BU
 import qualified Data.ByteString.Lazy as B
+import qualified Data.InfList                     as Inf
 
 import Control.Monad.ST
 import Data.STRef
@@ -138,8 +139,8 @@ data Color = Rgb !Double !Double !Double
            deriving(Eq,Ord)
 
 data DrawState = DrawState {
-                   supplyNames :: [String]
-                ,  rsrc :: PDFResource
+                   supplyNames  :: Inf.InfList String
+                ,  rsrc         :: PDFResource
                 ,  strokeAlphas :: M.Map StrokeAlpha String
                 ,  fillAlphas :: M.Map FillAlpha String
                 ,  theFonts :: M.Map PDFFont String
@@ -252,13 +253,13 @@ pdfDictMember k (PDFDictionary d)  = M.member k d
 -- | Get a new resource name
 supplyName :: Draw String
 supplyName = do
-    (x:xs) <- gets supplyNames
-    modifyStrict $ \s -> s {supplyNames = xs}
-    return x
-    
+    names <- gets supplyNames
+    modifyStrict $ \s -> s {supplyNames = Inf.tail names}
+    return $ Inf.head names
+
 emptyDrawState :: Int -> DrawState
-emptyDrawState ref = 
-    let names = (map (("O" ++ (show ref)) ++ ) $ [replicate k ['a'..'z'] | k <- [1..]] >>= sequence) in
+emptyDrawState ref =
+    let names = Inf.map (("O" ++ (show ref)) ++ ) $ Inf.concat $ fmap (\k -> sequence $ replicate k ['a'..'z']) (Inf.iterate succ 1) in
     DrawState names emptyRsrc M.empty M.empty M.empty M.empty emptyDictionary []  M.empty M.empty M.empty [identity]
   
 -- | Execute the drawing commands to get a new state and an uncompressed PDF stream
