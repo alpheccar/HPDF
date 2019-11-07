@@ -95,6 +95,7 @@ import qualified Data.ByteString.Lazy as B
 import Control.Monad.ST
 import Data.STRef
 
+import Control.Monad.Fail
 import Control.Monad.Writer.Class
 import Control.Monad.Reader.Class
 import Control.Monad.State
@@ -211,6 +212,9 @@ instance Functor Draw where
      fmap f = \m -> do { a <- m; return (f a) }
 
 instance MonadPath Draw
+
+instance MonadFail Draw where
+  fail err = error "Draw monad failed"
 
 readDrawST :: (forall s. DrawTuple s -> STRef s a) -> Draw a
 readDrawST   f   = Draw $ \env -> readSTRef   (f env) 
